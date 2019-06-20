@@ -7,6 +7,10 @@ library(ncdf4)
 library(rasterVis)
 library(grid)
 
+# to do 
+# create precip anom maps from long-term means
+# add logos?
+
 # map layers
 states <- getData('GADM', country='United States', level=1)
 us <- getData('GADM', country='United States', level=0)
@@ -210,7 +214,42 @@ grid.text(paste0("Plot created: ",format(Sys.time(), "%Y-%m-%d"),"\nThe Universi
                     fontfamily="Arial", cex=0.5)) 
 dev.off()
 
+# 500mb GH plot ----
 
-# to do 
-# create precip anom maps from long-term means
-# add logos?
+# create color scheme for GHs
+#mycols <- rasterTheme(region=colorRampPalette(brewer.pal(9,'YlGnBu'))(100))
+mycols <- rasterTheme(region=colorRampPalette(rev(brewer.pal(9,'Spectral')))(100))
+cols.at <- seq(5000, 6000, 100)
+# create contour cuts 5000 to 6000 m for gh
+levs.at<-seq(5000,6000, 100)
+
+p<-levelplot(rotate(hgt500[[day1:day2]]), margin=FALSE, par.settings = mycols,layout=c(7,5),
+             xlim=c(-150, -85), ylim=c(20, 60), at=cols.at, main="Daily Avg 500mb GH (m)")+
+  contourplot(rotate(hgt500[[day1:day2]]),
+              xlim=c(-150, -85), ylim=c(20, 60), at=levs.at,
+              lwd = 0.4,
+              labels = list(cex = 0.6),
+              label.style = 'align')+
+  # contourplot(rotate(pwat[[day1:day2]]),
+  #             xlim=c(-150, -85), ylim=c(20, 60), par.settings=pwat.cols, at=pwat.cols.at,
+  #             lwd = 0.1,
+  #             labels = list(cex = 0.6),
+  #             label.style = 'align',
+  #             col='blue')+
+  layer(sp.polygons(us, col = 'gray40', lwd=0.3))+
+  layer(sp.polygons(mx, col = 'gray40', lwd=0.3))+
+  layer(sp.polygons(cn, col = 'gray40', lwd=0.3))
+
+# write to image file
+ptm <- proc.time()
+png("/home/crimmins/RProjects/ClimPlot/plots/GH_500mbPlot.png", width = 16, height = 8, units = "in", res = 300L)
+#grid.newpage()
+print(p, newpage = FALSE)
+## now add the text 
+grid.text(paste0("Plot created: ",format(Sys.time(), "%Y-%m-%d"),"\nThe University of Arizona\nhttps://cals.arizona.edu/climate/"),
+          x=.90, y=.03, 
+          gp = gpar(col=1, 
+                    fontfamily="Arial", cex=0.5)) 
+dev.off()
+proc.time() - ptm
+

@@ -38,8 +38,8 @@ library(rmdformats)
 
 # auto date range...start with 6-15 and run on 6-17 to get two days of data, end on 10/1
 dateRangeStart="2019-06-15"
-dateRangeEnd=Sys.Date()
- if(dateRangeEnd<"2019-06-17" | dateRangeEnd>="2019-10-01"){
+dateRangeEnd=as.Date(format(as.POSIXct(Sys.Date()),usetz=TRUE, tz="Etc/GMT+7")) # date on local time zone
+ if(dateRangeEnd<"2019-06-16" | dateRangeEnd>="2019-10-01"){
    stop()
  }
 
@@ -381,7 +381,7 @@ leafMap<-leaflet() %>% addTiles() %>%
           addMouseCoordinates() %>%
           addImageQuery(totalPrecipAll, type="mousemove", layerId = "Inches", prefix = "")
 
-saveWidget(leafMap, file="/home/crimmins/RProjects/ClimPlot/monsoonMaps/leafletMaps/SW_Monsoon_TotalPrecip.html")
+saveWidget(leafMap, file="/home/crimmins/RProjects/ClimPlot/monsoonMaps/leafletMaps/SW_Monsoon_TotalPrecip.html", selfcontained = FALSE)
 
 # ----- end Total Precip ----
 
@@ -457,7 +457,7 @@ leafMap<-leaflet() %>% addTiles() %>%
   addMouseCoordinates() %>%
   addImageQuery(percPrecip, type="mousemove", layerId = "% of Avg", digits = 0, prefix = "")
 
-saveWidget(leafMap, file="/home/crimmins/RProjects/ClimPlot/monsoonMaps/leafletMaps/SW_Monsoon_PercentPrecip.html")
+saveWidget(leafMap, file="/home/crimmins/RProjects/ClimPlot/monsoonMaps/leafletMaps/SW_Monsoon_PercentPrecip.html", selfcontained = FALSE)
 # ----- end PERCENT AVG ----
 
 # RAIN DAYS Percent Map -----
@@ -532,7 +532,7 @@ leafMap<-leaflet() %>% addTiles() %>%
   addMouseCoordinates() %>%
   addImageQuery(percRainDays, type="mousemove", layerId = "% days", digits = 0, prefix = "")
 
-saveWidget(leafMap, file="/home/crimmins/RProjects/ClimPlot/monsoonMaps/leafletMaps/SW_Monsoon_PercentDays.html")
+saveWidget(leafMap, file="/home/crimmins/RProjects/ClimPlot/monsoonMaps/leafletMaps/SW_Monsoon_PercentDays.html", selfcontained = FALSE)
 # ----- end PERCENT AVG ----
 
 # SDII Map -----
@@ -607,7 +607,7 @@ leafMap<-leaflet() %>% addTiles() %>%
   addMouseCoordinates() %>%
   addImageQuery(sdii, type="mousemove", layerId = "in/day", digits = 2, prefix = "")
 
-saveWidget(leafMap, file="/home/crimmins/RProjects/ClimPlot/monsoonMaps/leafletMaps/SW_Monsoon_IntensityIndex.html")
+saveWidget(leafMap, file="/home/crimmins/RProjects/ClimPlot/monsoonMaps/leafletMaps/SW_Monsoon_IntensityIndex.html", selfcontained = FALSE)
 # ----- end SDII ----
 
 # MAX DAILY precip Map -----
@@ -685,7 +685,7 @@ leafMap<-leaflet() %>% addTiles() %>%
   addMouseCoordinates() %>%
   addImageQuery(maxRain, type="mousemove", layerId = "Inches", prefix = "")
 
-saveWidget(leafMap, file="/home/crimmins/RProjects/ClimPlot/monsoonMaps/leafletMaps/SW_Monsoon_MaxPrecip.html")
+saveWidget(leafMap, file="/home/crimmins/RProjects/ClimPlot/monsoonMaps/leafletMaps/SW_Monsoon_MaxPrecip.html", selfcontained = FALSE)
 
 # ----- end MAX DAILY ----
 
@@ -789,7 +789,7 @@ leafMap<-leaflet() %>%
   #addLogo("https://cals.arizona.edu/climate/misc/UA_CSAP_CLIMAS_logos.png", src = "remote",
   #        position="bottomleft",width=210, height=129)
 
-saveWidget(leafMap, file="/home/crimmins/RProjects/ClimPlot/monsoonMaps/leafletMaps/SW_Monsoon_DaysSince.html")
+saveWidget(leafMap, file="/home/crimmins/RProjects/ClimPlot/monsoonMaps/leafletMaps/SW_Monsoon_DaysSince.html", selfcontained = FALSE)
 # END DAYS SINCE ----
 
 # LATEST DAILY precip Map -----
@@ -867,7 +867,7 @@ leafMap<-leaflet() %>% addTiles() %>%
   addMouseCoordinates() %>%
   addImageQuery(gridStack[[max(nlayers(gridStack))]], type="mousemove", layerId = "Inches", prefix = "")
 
-saveWidget(leafMap, file="/home/crimmins/RProjects/ClimPlot/monsoonMaps/leafletMaps/SW_Monsoon_LatestDay.html")
+saveWidget(leafMap, file="/home/crimmins/RProjects/ClimPlot/monsoonMaps/leafletMaps/SW_Monsoon_LatestDay.html",selfcontained = FALSE)
 
 # ----- end LATEST DAILY ----
 
@@ -1012,6 +1012,9 @@ for(i in 1:length(allDates)){
 # END PLOT DAILIES ----
 
 # RMARKDOWN of DAILIES ----
+# DEAL WITH PANDOC ERROR
+Sys.setenv(RSTUDIO_PANDOC="/usr/lib/rstudio-server/bin/pandoc")
+
 # create Rmarkdown html of daily maps
 #file.remove("/home/crimmins/RProjects/ClimPlot/monsoonMaps/dailyPrecip.html")
 render('/home/crimmins/RProjects/ClimPlot/createThumbsHTML.Rmd', output_file='dailyPrecip.html',

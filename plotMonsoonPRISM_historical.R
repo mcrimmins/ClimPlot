@@ -28,8 +28,8 @@ library(rmdformats)
 
 
 # Loop through years
-yr1=2000
-yr2=2018
+yr1=1981
+yr2=1989
 
 for (yearDir in yr1:yr2)
 {
