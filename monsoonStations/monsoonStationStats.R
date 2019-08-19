@@ -32,9 +32,9 @@ all_counties<-map_data("county")
 #dateRangeEnd="2018-09-30"
 
 # auto date range...start with 6-15 and run on 6-17 to get two days of data, end on 10/1
-dateRangeStart="2019-06-15"
+dateRangeStart="2019-07-15"
 dateRangeEnd=as.Date(format(as.POSIXct(Sys.Date()),usetz=TRUE, tz="Etc/GMT+7")) # date on local time zone
-if(dateRangeEnd<"2019-06-16" | dateRangeEnd>="2019-10-01"){
+if(dateRangeEnd<"2019-06-16" | dateRangeEnd>="2019-08-17"){
   stop()
 }
 

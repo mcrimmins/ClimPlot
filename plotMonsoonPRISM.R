@@ -3,6 +3,8 @@
 # Get Gridded data from ACIS
 # MAC 05/31/2019
 
+# update on 8/19/2019 -- added percentile rank map
+
 # to do
 # - what is lag with PRISM data? download past 12:40 ET
 # - combine maps into single leaflet/mapview 
@@ -98,7 +100,9 @@ gridStack[gridStack <= 0] <- NA
 # create summary grids ----
 # total precip
 totalPrecipAll<-calc(gridStack, sum, na.rm=TRUE)
+totalPrecipAll_w0<-totalPrecipAll
   totalPrecipAll[totalPrecipAll <= 0] <- NA
+  totalPrecipAll_w0[totalPrecipAll_w0 < 0]<- NA
 # percent of average
 JJASppt<-stack("/home/crimmins/RProjects/ClimPlot/PRISM/JJASppt.grd")
   JJASppt<-JJASppt/25.4
@@ -129,9 +133,21 @@ maxRain <- calc(gridStack, fun=function(x){max(x, na.rm = TRUE)})
   maxRain[maxRain <= 0] <- NA
 
 # days since 0.05" rainfall
-daysSince <-length(allDates)-(calc(gridStack, fun=function(x){max(which(x > 0.05), na.rm = TRUE)}))
-  daysSince[daysSince <= 0] <- NA
+daysSince <-length(allDates)-(calc(gridStack, fun=function(x){max(which(x >= 0.05), na.rm = TRUE)}))
+  daysSince[daysSince < 0] <- NA
   daysSince[daysSince==Inf] <- NA
+
+# percentile rank of precip
+  # load allCumSum
+  allCumSum<-stack("/home/crimmins/RProjects/ClimPlot/AZNM_PRISM_Monsoon_cumPrecip_1981_2018.grd")
+  # get subsets for the current day
+  doyCumSum<-subset(allCumSum, seq(i,nlayers(allCumSum)-(108-i),by=108))
+  # add current year
+  doyCumSum<-stack(doyCumSum,totalPrecipAll_w0)
+  
+  perc.rank<-function(x) trunc(rank(x,ties.method = "average"))/length(x)
+  percRankPrecip <- calc(doyCumSum, fun=perc.rank)
+  percRankPrecip <-(percRankPrecip[[nlayers(percRankPrecip)]])*100
 ## ----
 
 # process daily anomalies ----
@@ -458,6 +474,81 @@ leafMap<-leaflet() %>% addTiles() %>%
   addImageQuery(percPrecip, type="mousemove", layerId = "% of Avg", digits = 0, prefix = "")
 
 saveWidget(leafMap, file="/home/crimmins/RProjects/ClimPlot/monsoonMaps/leafletMaps/SW_Monsoon_PercentPrecip.html", selfcontained = FALSE)
+# ----- end PERCENT AVG ----
+
+# RRECIP PERCENTILES Map -----
+# colorramp for total precip
+precipCols<-colorRampPalette(c("darkgoldenrod4", "white", "darkgreen"))(50)
+precBreaks<-seq(0,100,10)
+precLabs<-as.character(seq(0,100,10))
+precLabs[11]<-"100"
+precLabs[1]<-"0"
+#precBreaksmin<-seq(1,19,2)
+
+#theme_set(theme_bw())
+p<-gplot(percRankPrecip) + geom_tile(aes(fill = value)) +
+  #scale_fill_gradient2(low = 'white', high = 'blue') +
+  #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="darkgoldenrod", 
+  #                     name="inches", limits=c(0,20),oob=squish)+
+  
+  scale_fill_gradientn(colours = precipCols, na.value="darkgoldenrod", 
+                       name="%tile", limits=c(0,100),oob=squish, breaks=precBreaks, labels=precLabs, expand=NULL)+
+  guides(fill= guide_colorbar(barheight=15,nbin = 500, raster = FALSE))+
+  
+  coord_equal(xlim = c(-115,-102), ylim = c(31,38), expand = FALSE)+
+  xlab("Longitude") + ylab("Latitude") 
+
+p<-p +  geom_polygon( data=all_states, aes(x=X, y=Y, group = PID),colour="black", fill=NA, size=0.25 )+
+  #scale_x_continuous(breaks = c(-120,-140))+
+  #ggtitle("Daily Total Precip (inches) - PRISM")+
+  ggtitle(paste0("Total Precipitation Percentile Rank (1981-2018 ranking period): ",allDates[1]," to ",allDates[length(allDates)]))+
+  labs(caption=paste0("Plot created: ",format(Sys.time(), "%Y-%m-%d"),
+                      "\nThe University of Arizona\nhttps://cals.arizona.edu/climate/\nData Source: PRISM Climate Group\nRCC-ACIS"))+
+  theme(plot.title=element_text(size=14, face = "bold"))
+
+p<-p+geom_path(data = tribes_df, 
+               aes(x = long, y = lat, group = group),
+               color = 'azure4', size = .2)
+
+p<-p+geom_point(data = SWCities, aes(x = lon, y = lat), size = 1, 
+                shape = 20)
+
+p<-p+geom_text(data = SWCities, aes(x = lon, y = lat, label = City), 
+               size = 3, col = "black", fontface = "bold", nudge_y = 0.1)
+
+# write out file
+png("/home/crimmins/RProjects/ClimPlot/monsoonMaps/SW_Monsoon_RankPrecip.png", width = 16, height = 8, units = "in", res = 300L)
+#grid.newpage()
+print(p, newpage = FALSE)
+dev.off()
+
+# add logos
+# Call back the plot
+plot <- image_read("/home/crimmins/RProjects/ClimPlot/monsoonMaps/SW_Monsoon_RankPrecip.png")
+# And bring in a logo
+#logo_raw <- image_read("./logos/UA_CLIMAS_logos.png")
+logo_raw <- image_read("/home/crimmins/RProjects/ClimPlot/logos/UA_CSAP_CLIMAS_logos_horiz.png") 
+logo <- image_resize(logo_raw, geometry_size_percent(width=120,height = 120))
+# Stack them on top of each other
+#final_plot <- image_append((c(plot, logo)), stack = TRUE)
+#final_plot <- image_mosaic((c(plot, logo)))
+final_plot <- image_composite(plot, logo, offset = "+510+2150")
+# And overwrite the plot without a logo
+image_write(final_plot, "/home/crimmins/RProjects/ClimPlot/monsoonMaps/SW_Monsoon_RankPrecip.png")
+
+# leaflet interactive
+pal <- colorNumeric(c("darkgoldenrod4", "white", "darkgreen"), c(0,100),
+                    na.color = "transparent")
+crs(percRankPrecip) <- sp::CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+
+leafMap<-leaflet() %>% addTiles() %>%
+  addRasterImage(percRankPrecip, colors = pal, opacity = 0.8, layerId = "%tile") %>%
+  addLegend(pal = pal, values = values(percRankPrecip),
+            title=paste0("% of Avg Precip:<br> ",allDates[1]," to ",allDates[length(allDates)]))%>%
+  addMouseCoordinates() %>%
+  addImageQuery(percRankPrecip, type="mousemove", layerId = "%tile", digits = 0, prefix = "")
+
+saveWidget(leafMap, file="/home/crimmins/RProjects/ClimPlot/monsoonMaps/leafletMaps/SW_Monsoon_RankPrecip.html", selfcontained = FALSE)
 # ----- end PERCENT AVG ----
 
 # RAIN DAYS Percent Map -----
