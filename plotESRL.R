@@ -96,7 +96,7 @@ layerN<-min(c(nlayers(precip), nlayers(hgt500), nlayers(pwat)))
 
 # ----- RasterVis plotting solution
 # set 0 precip to NA
-precip[precip <= 0] <- NA
+values(precip)[values(precip) <= 0] = NA
 
 # set number of days to plot
  days<-34

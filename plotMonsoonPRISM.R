@@ -35,15 +35,15 @@ library(rmdformats)
 
 ## ---- download PRISM data ----
 # Manually set universal date range - ACIS PRISM current day-1, correct for LINUX UTC time
-#dateRangeStart="2018-06-15"
-#dateRangeEnd="2018-09-30"
+dateRangeStart="2019-06-15"
+dateRangeEnd="2019-09-30"
 
 # auto date range...start with 6-15 and run on 6-17 to get two days of data, end on 10/1
-dateRangeStart="2019-06-15"
-dateRangeEnd=as.Date(format(as.POSIXct(Sys.Date()),usetz=TRUE, tz="Etc/GMT+7")) # date on local time zone
- if(dateRangeEnd<"2019-06-16" | dateRangeEnd>="2019-10-01"){
-   stop()
- }
+# dateRangeStart="2019-06-15"
+# dateRangeEnd=as.Date(format(as.POSIXct(Sys.Date()),usetz=TRUE, tz="Etc/GMT+7")) # date on local time zone
+#  if(dateRangeEnd<"2019-06-16" | dateRangeEnd>="2019-10-01"){
+#    stop()
+#  }
 
 # generate dates -- keep with PRISM date
 allDates<-seq(as.Date(dateRangeStart), as.Date(dateRangeEnd),1)
@@ -544,7 +544,7 @@ crs(percRankPrecip) <- sp::CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs
 leafMap<-leaflet() %>% addTiles() %>%
   addRasterImage(percRankPrecip, colors = pal, opacity = 0.8, layerId = "%tile") %>%
   addLegend(pal = pal, values = values(percRankPrecip),
-            title=paste0("% of Avg Precip:<br> ",allDates[1]," to ",allDates[length(allDates)]))%>%
+            title=paste0("%-tile rank of total precip:<br> ",allDates[1]," to ",allDates[length(allDates)]))%>%
   addMouseCoordinates() %>%
   addImageQuery(percRankPrecip, type="mousemove", layerId = "%tile", digits = 0, prefix = "")
 
