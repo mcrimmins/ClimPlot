@@ -71,8 +71,17 @@ writeRaster(allCumSum,filename=paste0("/home/crimmins/RProjects/ClimPlot/AZNM_PR
 # load allCumSum
 allCumSum<-stack("/home/crimmins/RProjects/ClimPlot/AZNM_PRISM_Monsoon_cumPrecip_1981_2018.grd")
 
-doy<-15
+doy<-73
 doyCumSum<-subset(allCumSum, seq(doy,nlayers(allCumSum)-(108-doy),by=108))
 
 perc.rank<-function(x) trunc(rank(x, ties.method = "average"))/length(x)
 percRankPrecip <- calc(doyCumSum, fun=perc.rank)
+
+# explore point time series
+y<-32.124101
+x<--110.948236
+
+cumSumTS<-t(raster::extract(doyCumSum, cellFromXY(doyCumSum, c(x,y))))
+percTS<-t(raster::extract(percRankPrecip, cellFromXY(percRankPrecip, c(x,y))))
+
+percTS<-cbind(seq(1981,2018,1),cumSumTS,percTS)
