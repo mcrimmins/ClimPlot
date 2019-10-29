@@ -7,13 +7,10 @@ library(jsonlite)
 library(tidyverse)
 library(lubridate)
 library(cowplot)
-#library(reshape)
-#library(ggmap)
-#library(RColorBrewer)
-#library(gridExtra)
-#library(xtable)
-#library(tidyr)
-#library(SortableHTMLTables)
+library(scales)
+library(magick)
+
+# TO DO: add PET, add Map 
 
 # ----- functions
 wtr_yr <- function(dates, start_month=10) {
@@ -37,8 +34,8 @@ wtr_yr <- function(dates, start_month=10) {
 # ----
 
 # specify season
-seas1mo<-6; seas1dy<-15
-seas2mo<-9; seas2dy<-30
+seas1mo<-1; seas1dy<-1
+seas2mo<-12; seas2dy<-31
 
 # WaterYear Lookup table
 waterDates<-as.data.frame(seq(as.Date("1999/10/1"), as.Date("2000/9/30"), "days"))
@@ -96,8 +93,11 @@ out<-fromJSON(out)
   por<-na.contiguous(data$precip)
   por<-attr(por,"tsp")
     beginyr<-data$year[por[[1]]]
-  # trim to por
+  # find last year in POR
+    lastyr<-data$year[por[[2]]]
+    # trim to por
   data<-subset(data, year>beginyr)
+  
   
 # add water year/days
   data$waterYear<-wtr_yr(data$date)
@@ -131,7 +131,7 @@ out<-fromJSON(out)
     # doy/year for plots
     dataSeas$doyX<-dataSeas$wtr_day
     dataSeas$yearX<-dataSeas$waterYear
-    # adjust dummy date -- STOPPED HERE!!!
+    # adjust dummy date 
     dataSeas$dummyDate<-ifelse(dataSeas$dummyDate>=as.Date(paste0("2000-",seas1mo,"-",seas1dy)),
                         as.Date(paste0("1999-",dataSeas$month,"-",dataSeas$day), format="%Y-%m-%d"),
                         dataSeas$dummyDate)
@@ -159,7 +159,8 @@ out<-fromJSON(out)
                 modRain = sum(precipNA>quantPrecip[1] & precipNA<quantPrecip[2], na.rm = T),
                 hvyRain = sum(precipNA>=quantPrecip[2], na.rm = T),
                 precipNA = sum(is.na(precip)),
-                tmeanNA = sum(is.na(t_mean))
+                tmeanNA = sum(is.na(t_mean)),
+                yearX = max(yearX, na.rm = T)
       )
     
   }else{
@@ -208,7 +209,8 @@ out<-fromJSON(out)
                 hvyRain = sum(precipNA>=quantPrecip[2], na.rm = T),
                 precipNA = sum(is.na(precip)),
                 precipNA = sum(is.na(precip)),
-                tmeanNA = sum(is.na(t_mean))
+                tmeanNA = sum(is.na(t_mean)),
+                yearX = max(yearX, na.rm = T)
       )
   }
 
@@ -225,6 +227,12 @@ out<-fromJSON(out)
                 avgTmax = mean(t_max,na.rm='TRUE'),
                 minTmin = min(t_min,na.rm='TRUE'),
                 avgTmin = mean(t_min,na.rm='TRUE'))
+  # temperatures
+  dayPrecip <- dataSeas %>% 
+    group_by(dummyDate) %>% 
+    summarise(doyX = min(doyX, na.rm = TRUE),
+              maxPrecip = max(cumPrecip,na.rm='TRUE'),
+              minPrecip = min(cumPrecip,na.rm='TRUE'))
   
 # DEVELOP SEASONAL MEANS THAT CHANGE OVER TIME, interactive plotly versions?
 
@@ -244,6 +252,7 @@ out<-fromJSON(out)
 # cumulative precip plot
   currYearData$avgCumPrecip<-avgCumPrecip$meanCumPrecip
   currYearData$diffAvg<-currYearData$cumPrecip-currYearData$avgCumPrecip
+  currYearData$missPrecip<-ifelse(is.na(currYearData$precip)==TRUE, 1, NA)
 # grab temp data fram for stacked precip plot  
   temp<-currYearData[,c("date","avgCumPrecip","diffAvg")]
     temp$abvAvg<-temp$diffAvg
@@ -257,19 +266,45 @@ out<-fromJSON(out)
   temp<-gather(temp, "precipCat","value", -date)
   #temp$precipCat<-factor(temp$precipCat, c("avgCumPrecip","abvAvg", "beloAvg"))
   temp$precipCat<-factor(temp$precipCat, c("beloAvg","abvAvg","avgCumPrecip"))
+  # for min/max lines
+  #dayPrecip<-dayPrecip[1:nrow(currYearData),]
+  #dayPrecip$currDate<-currYearData$date
+  # missing data text
+  missText<-paste0("(*=missing, data available through ", currYearData$date[max(which(!is.na(currYearData$precip)))],")")
+ 
   
 # stacked bar precip plot
-ggplot()+
+pPrecip<- ggplot()+
     geom_bar(data=temp, aes(x=date,y=value, fill=as.factor(precipCat)),stat = "identity", width = 1,
              show.legend = FALSE)+
-    scale_fill_manual(values = c("orange4", "darkgreen", "grey"))+
+    scale_fill_manual(values = c("orange4", "green4", "grey88"))+
     geom_step(data=currYearData, aes(x=date,y=avgCumPrecip), color="black", position = position_nudge(x = -0.5))+
     geom_step(data=currYearData, aes(x=date,y=cumPrecip), color="blue", position = position_nudge(x = -0.5))+
-    geom_bar(data=currYearData, aes(x=date,y=precip), stat = "identity",fill="blue",color="black")+
+    geom_bar(data=currYearData, aes(x=date,y=precip), stat = "identity",fill="dodgerblue2",color="blue")+
   xlab('Date') +
   ylab('Inches')+
-  scale_x_date(date_labels = "%b-%d", date_breaks = "1 month")
-
+  scale_x_date(date_labels = "%b-%d", date_breaks = "1 month", expand = c(0, 0))+
+  scale_y_continuous(expand = c(0, 0, 0.1, 0))+
+    expand_limits(y=2)+
+  annotate(geom="text", x=currYearData$date[nrow(currYearData)]-2, hjust=1, y=Inf, label="Daily total and cumulative seasonal precipitation",
+           color="black", size=3, vjust=2)+
+  annotate(geom="text", x=currYearData$date[nrow(currYearData)]-2, hjust=1, y=Inf, label=missText,
+           color="red", size=3, vjust=4)+
+  theme_bw()+
+  theme(#panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.text.x=element_blank(),
+        axis.title.x=element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, size=1))
+# add missing value dots
+    if(sum(currYearData$missPrecip, na.rm = TRUE)!=0){
+      pPrecip<-pPrecip+ geom_point(data=currYearData, aes(date,missPrecip),shape=8, color="red", 
+                                   size=1,show.legend = FALSE)
+    }    
+  # add max/min lines?
+  #geom_line(data=dayPrecip, aes(currDate, maxPrecip), linetype=2)+
+  #geom_line(data=dayPrecip, aes(currDate, minPrecip), linetype=2)
+ 
 # similar years plot
 #corrYears<-cor(precipMatrix[2:nrow(precipMatrix),], method = "pearson", use = "pairwise.complete.obs")
 #corrYears<-cov(precipMatrix[2:nrow(precipMatrix),], method = "pearson", use = "pairwise.complete.obs")
@@ -278,12 +313,24 @@ ggplot()+
   topYears<-topYears[order(topYears[,1], decreasing = FALSE),]
   topYears<-topYears[1:3,2]
 # plot top 3 years
-  ggplot(subset(dataSeas, yearX %in% topYears)) + 
+pTop3<-  ggplot(subset(dataSeas, yearX %in% topYears)) + 
     geom_step(aes(dummyDate, cumPrecip, color=as.factor(yearX)))+
     scale_color_brewer(palette = "Set1")+
+    scale_x_date(date_labels = "%b", date_breaks = "1 month", expand = c(0, 0))+
+    scale_y_continuous(expand = c(0, 0))+
     ylab("inches")+
     xlab("date")+
-    theme(legend.position = c(0.05, 0.8), legend.title = element_blank())
+    theme_bw(base_size = 8)+
+    theme(panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(),
+          legend.position = c(0.15, 0.72),
+          legend.title = element_blank(),
+          legend.text = element_text(size = 6, face = "bold"),
+          legend.spacing.y = unit(0, 'cm'),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          axis.text.x = element_text(angle = 45, hjust = 1))+
+    geom_line(data=currYearData, aes(dummyDate, avgCumPrecip), linetype = "dashed")
 
 # Precip events intensity counts - bar plot
   temp<-seasSummary[which(seasSummary[,1]==currYear),16:18]
@@ -291,7 +338,7 @@ ggplot()+
     temp$key<-factor(temp$key, levels=c("lightRain","modRain","hvyRain"),
                      labels = c("Light", "Moderate","Heavy"))
     temp$label<-c(paste0("<",quantPrecip[1]),paste0(quantPrecip[1],"-",quantPrecip[2]),paste0(">",quantPrecip[2]))
-  ggplot(temp, aes(key,value, fill=key))+
+pIntens<-  ggplot(temp, aes(key,value, fill=key))+
     geom_bar(stat = "identity", color="black")+
     scale_fill_manual(values = c("deepskyblue2", "deepskyblue3", "deepskyblue4"))+
     theme(legend.position = "none",
@@ -300,7 +347,7 @@ ggplot()+
     ggtitle("Precip Events")+
     geom_text(data=temp,aes(x=key,y=value-3,label=label),vjust=0)
     
-  # Precip Timing Gannt chart 
+# Precip Timing Gannt chart 
   temp<-seasSummary[which(seasSummary[,1]==currYear),11:13]
     temp<-currYearData$date[as.integer(temp)-(currYearData$doyX[1]-1)]
   temp2<-seasMeans[,11:13]
@@ -321,47 +368,263 @@ ggplot()+
   temp3<-gather(temp3, key, value, 1:2)
   temp3$value<-as.Date(temp3$value, origin = "1970-01-01")
     
-  # plot chart
-  ggplot()+
+  # plot timing gannt chart
+pTiming<-  ggplot()+
     geom_line(data=temp, aes(x=as.factor(cat),y=value, color=as.factor(key), group=as.factor(cat)), stat = "identity",
               size=10)+
      coord_flip()+
     scale_y_date(limits = c(currYearData$date[1],currYearData$date[nrow(currYearData)]),
-                 date_breaks = "1 month", date_labels = "%b")+
+                 date_breaks = "1 month", date_labels = "%b",expand = c(0, 0))+
     scale_color_manual(values = c("deepskyblue2", "deepskyblue3", "deepskyblue4"))+
-    theme(legend.position = "none",
-          axis.title.x = element_blank(),
-          axis.title.y = element_blank())+
-    geom_text(data=temp,aes(x=as.factor(cat),y=value,label=key),vjust=0)+
+    geom_text(data=temp,aes(x=as.factor(cat),y=value,label=key),vjust=0.5, size=3)+
     geom_point(data=temp3, aes(x=as.factor(cat),y=value), shape=25, fill="red")+
-    geom_text(data=temp3, aes(x=as.factor(cat), y=value, label=key), vjust=-0.5)
-      
+    geom_text(data=temp3, aes(x=as.factor(cat), y=value, label=key), vjust=1.5, size=3)+
+    annotate(geom="text", x=Inf, y=currYearData$date[1], label="Timing of precip events/totals",
+           color="black", size=3, vjust=1.5, hjust=-0.1)+
+    theme_bw()+
+    theme(#panel.grid.major = element_blank(), 
+      panel.grid.minor = element_blank(),
+      axis.text.x=element_blank(),
+      axis.title.x=element_blank(),
+      panel.border = element_rect(colour = "black", fill=NA, size=1),
+      legend.position = "none",
+      axis.title.y = element_blank())
+
 # Daily temperature plot
   dayTemps<-dayTemps[1:nrow(currYearData),]
   dayTemps$currDate<-currYearData$date
-  ggplot()+
-    geom_linerange(data=currYearData, aes(x=date, ymin=t_min, ymax=t_max),color="goldenrod2")+
+pTemp<-  ggplot()+
+    geom_linerange(data=currYearData, aes(x=date, ymin=t_min, ymax=t_max),color="goldenrod2", size=1)+
     geom_line(data=dayTemps, aes(x=currDate,y=avgTmax), color="red")+
     geom_step(data=dayTemps, aes(x=currDate,y=maxTmax), color="red", size=0.1)+
     geom_line(data=dayTemps, aes(x=currDate,y=avgTmin), color="blue")+
     geom_step(data=dayTemps, aes(x=currDate,y=minTmin), color="blue", size=0.1)+
     geom_hline(yintercept=32, color='dodgerblue4', size=0.5, linetype=2)+
     scale_x_date(limits = c(currYearData$date[1],currYearData$date[nrow(currYearData)]),
-                 date_breaks = "1 month", date_labels = "%b")+
+                 date_breaks = "1 month", date_labels = "%b", expand = c(0, 0))+
     ylab("deg F")+
+    theme_bw()+  
     theme(legend.position = "none",
-          axis.title.x = element_blank())+
-    annotate(geom="text", x=dayTemps$currDate[1], y=dayTemps$avgTmax[1]+4, label="T-max",
-             color="red")+
-    annotate(geom="text", x=dayTemps$currDate[1], y=dayTemps$avgTmin[1]-4, label="T-min",
-             color="blue")+
-    annotate(geom="text", x=dayTemps$currDate[5], y=30, 
+          panel.grid.minor = element_blank(),
+          axis.title.x = element_blank(),
+          #axis.text.x=element_blank(),
+          panel.border = element_rect(colour = "black", fill=NA, size=1))+
+    annotate(geom="text", x=currYearData$date[1], y=Inf, label="Daily Min/Max Temps",
+           color="black", size=3, vjust=1.5, hjust=-0.1)+
+    # annotate(geom="text", x=dayTemps$currDate[1]+round(nrow(dayTemps)*.05), y=dayTemps$avgTmax[1]+4, label="T-max",
+    #          color="red")+
+    # annotate(geom="text", x=dayTemps$currDate[1]+round(nrow(dayTemps)*.05), y=dayTemps$avgTmin[1]-4, label="T-min",
+    #          color="blue")+
+    annotate(geom="text", x=currYearData$date[1], y=28, 
              label=paste0("Freeze Days: ",as.integer(seasSummary[which(seasSummary[,1]==currYear),7]),
                           " (Avg:",as.integer(seasMeans[1,7]),")" ),
-             color="dodgerblue4")+
+             color="dodgerblue4", size=3, hjust=-0.1)+
     ylim(min(dayTemps$minTmin),max(dayTemps$maxTmax))
-          
-    
-  # add records
+  # add records as dots
+
+# bar gauges for precip, rain days, intensity, temps...
+precipBar<-  ggplot(subset(seasSummary, yearX %in% currYear))+
+              geom_bar(aes(1,totalPrecip), stat = "identity", fill="dodgerblue", color="black")+
+              geom_hline(yintercept = seasMeans[2], color="red")+
+              theme_bw()+
+              theme(legend.position = "none",
+                    axis.ticks.x = element_blank(),
+                    panel.grid.major = element_blank(), 
+                    panel.grid.minor = element_blank(),
+                    #axis.title.x = element_blank(),
+                    axis.text.x=element_blank(),
+                    panel.border = element_rect(colour = "black", fill=NA, size=1))+
+              ylab("inches")+
+              xlab("Precip")+
+              geom_text(aes(1,(seasMeans[2]*2)-((seasMeans[2]*2)*0.1), label=paste0(totalPrecip," in")))+
+              ylim(0,seasMeans[2]*2)
+  # rainDays
+raindayBar<-  ggplot(subset(seasSummary, yearX %in% currYear))+
+              geom_bar(aes(1,totalRainDays), stat = "identity", fill="green", color="black")+
+              geom_hline(yintercept = seasMeans[3], color="red")+
+              theme_bw()+
+              theme(legend.position = "none",
+                    axis.ticks.x = element_blank(),
+                    panel.grid.major = element_blank(), 
+                    panel.grid.minor = element_blank(),
+                    #axis.title.x = element_blank(),
+                    axis.text.x=element_blank(),
+                    panel.border = element_rect(colour = "black", fill=NA, size=1))+
+              ylab("days")+
+              xlab("Rain days")+
+              geom_text(aes(1,(seasMeans[3]*2)-((seasMeans[3]*2)*0.1), label=paste0(totalRainDays," days")))+
+              ylim(0,seasMeans[3]*2)
+# rainDays
+intenseBar<-  ggplot(subset(seasSummary, yearX %in% currYear))+
+                geom_bar(aes(1,totalPrecip/totalRainDays), stat = "identity", fill="yellow", color="black")+
+                geom_hline(yintercept =  seasMeans[2]/seasMeans[3], color="red")+
+                theme_bw()+
+                theme(legend.position = "none",
+                      axis.ticks.x = element_blank(),
+                      panel.grid.major = element_blank(), 
+                      panel.grid.minor = element_blank(),
+                      #axis.title.x = element_blank(),
+                      axis.text.x=element_blank(),
+                      panel.border = element_rect(colour = "black", fill=NA, size=1))+
+                ylab("in/day")+
+                xlab("Intensity")+
+                geom_text(aes(1,((seasMeans[2]/seasMeans[3])*2)-(((seasMeans[2]/seasMeans[3])*2)*0.1),
+                              label=paste0(round(totalPrecip/totalRainDays,2)," in/day")))+
+                ylim(0,((seasMeans[2]/seasMeans[3])*2))
+# tmin
+tminBar<-  ggplot(subset(seasSummary, yearX %in% currYear))+
+              geom_bar(aes(1,meanTmin), stat = "identity", fill="blue", color="black")+
+              geom_hline(yintercept = seasMeans[4], color="orange")+
+              theme_bw()+
+              theme(legend.position = "none",
+                    axis.ticks.x = element_blank(),
+                    panel.grid.major = element_blank(), 
+                    panel.grid.minor = element_blank(),
+                    axis.title.y = element_blank(),
+                    axis.text.x=element_blank(),
+                    panel.border = element_rect(colour = "black", fill=NA, size=1))+
+              ylab("deg F")+
+              xlab("T-min")+
+              scale_y_continuous(limits=c(seasMeans[4]-5,seasMeans[4]+5),oob = rescale_none)+
+              geom_text(aes(1,(seasMeans[4]+5), label=paste0(round(meanTmin, 1)," F")))
+# tmax
+tmaxBar<-  ggplot(subset(seasSummary, yearX %in% currYear))+
+            geom_bar(aes(1,meanTmax), stat = "identity", fill="red", color="black")+
+            geom_hline(yintercept = seasMeans[5], color="orange")+
+            theme_bw()+
+            theme(legend.position = "none",
+                  axis.ticks.x = element_blank(),
+                  panel.grid.major = element_blank(), 
+                  panel.grid.minor = element_blank(),
+                  axis.title.y = element_blank(),
+                  axis.text.x=element_blank(),
+                  panel.border = element_rect(colour = "black", fill=NA, size=1))+
+            ylab("deg F")+
+            xlab("T-max")+
+            scale_y_continuous(limits=c(seasMeans[5]-5,seasMeans[5]+5),oob = rescale_none)+
+            geom_text(aes(1,(seasMeans[5]+5), label=paste0(round(meanTmax, 1)," F")))              
+# tmean
+tmeanBar<-  ggplot(subset(seasSummary, yearX %in% currYear))+
+              geom_bar(aes(1,meanTmean), stat = "identity", fill="dodgerblue", color="black")+
+              geom_hline(yintercept = seasMeans[6], color="orange")+
+              theme_bw()+
+              theme(legend.position = "none",
+                    axis.ticks.x = element_blank(),
+                    panel.grid.major = element_blank(), 
+                    panel.grid.minor = element_blank(),
+                    axis.title.y = element_blank(),
+                    axis.text.x=element_blank(),
+                    panel.border = element_rect(colour = "black", fill=NA, size=1))+
+              ylab("deg F")+
+              xlab("T-mean")+
+              scale_y_continuous(limits=c(seasMeans[6]-5,seasMeans[6]+5),oob = rescale_none)+
+              geom_text(aes(1,(seasMeans[6]+5), label=paste0(round(meanTmean, 1), " F")))  
+
+# Station Info text block
+  # get temp and precip rankings
+  temp<-subset(seasSummary, tmeanNA<=30)
+    temp$pRank<-rank(temp$totalPrecip)
+    temp$tRank<-rank(temp$meanTmean)
+  pRank<-((lastyr-beginyr)+1)-temp$pRank[which(temp$yearX==currYear)]
+  tRank<-((lastyr-beginyr)+1)-temp$tRank[which(temp$yearX==currYear)]
+  
+# text = paste("\n   The following is text that'll appear in a plot window.\n",
+#              "       As you can see, it's in the plot window\n",
+#              "       One might imagine useful informaiton here")
+stationText<-ggplot() + 
+              geom_blank()+
+              # annotate("text", x = 4, y = 25, 
+              #          label = 'atop(bold("This should be bold"),"this should not", "Another thing")',
+              #          colour = "red", parse = TRUE) +
+              annotate("text", x=0, y=0, label=out$meta$name, fontface="bold",hjust=0)+
+              annotate("text", x=0, y=-1, label=paste0("Elevation (ft): ", out$meta$elev),hjust=0)+
+              annotate("text", x=0, y=-2, label=paste0("Period of record: ", beginyr,"-",lastyr), hjust=0)+
+              annotate("text", x=0, y=-3, label=paste0("Years in record: ", lastyr-beginyr), hjust=0)+
+              annotate("text", x=0, y=-4, label=paste0("Precip rank: ", pRank, " (1-wettest)"), hjust=0)+
+              annotate("text", x=0, y=-5, label=paste0("Temp rank: ", tRank, " (1-warmest)"), hjust=0)+
+              annotate("text", x=0, y=-6, label=paste0("Missing in ",currYear,": ", seasSummary$precipNA[which(seasSummary$yearX==currYear)] ), hjust=0)+
+              annotate("text", x=0, y=-7, label=paste0("Total snow: ", seasSummary$totalSnow[which(seasSummary$yearX==currYear)], " (", 
+                                                       round(seasSummary$totalSnow[which(seasSummary$yearX==currYear)]/seasMeans[8]*100)," % avg)"), hjust=0)+
+              theme_bw() +
+              theme(panel.grid.major=element_blank(),
+                    panel.grid.minor=element_blank(),
+                    axis.title.x = element_blank(),
+                    axis.text.x=element_blank(),
+                    axis.title.y = element_blank(),
+                    axis.text.y=element_blank(),
+                    axis.ticks.y=element_blank(),
+                    axis.ticks.x=element_blank())+
+              xlim(0,1)
+  
+# Dry spells text block
+drySpellText<-ggplot() + 
+                geom_blank()+
+                # annotate("text", x = 4, y = 25, 
+                #          label = 'atop(bold("This should be bold"),"this should not", "Another thing")',
+                #          colour = "red", parse = TRUE) +
+                annotate("text", x=0, y=0, label="Dry Spells", fontface="bold",hjust=0, color="brown")+
+                annotate("text", x=0, y=-1, label=paste0("Avg length: ", round(seasSummary$avgDrySpell[which(seasSummary$yearX==currYear)]), " days (avg: ", 
+                                                         round(seasMeans[15]),")"), hjust=0, color="brown")+
+                annotate("text", x=0, y=-2, label=paste0("Max length: ", round(seasSummary$maxDrySpell[which(seasSummary$yearX==currYear)]), " days (avg: ", 
+                                                         round(seasMeans[14]),")"), hjust=0, color="brown")+
+                theme_bw() +
+                theme(panel.grid.major=element_blank(),
+                      panel.grid.minor=element_blank(),
+                      axis.title.x = element_blank(),
+                      axis.text.x=element_blank(),
+                      axis.title.y = element_blank(),
+                      axis.text.y=element_blank(),
+                      axis.ticks.y=element_blank(),
+                      axis.ticks.x=element_blank())+
+                xlim(0,1)
+
+# CREATE MASTER PLOT USING COWPLOT
+  # combine main plots
+  mainPlot<-plot_grid(pTiming,pPrecip,pTemp, rel_heights=c(0.4, 2, 0.7),
+           ncol = 1, nrow = 3, align = "v")
+  # add top 3 inset to main plot
+  mainPlot<-ggdraw(mainPlot) + draw_plot(pTop3, x=-0.30, y=0.22, scale=0.25)
+  #mainPlot<-ggdraw(mainPlot) + draw_plot(pTop3, x=-0.30, y=0.20, width = 1, height = 1)
+  # create precip bar block
+  precipPlot<-plot_grid(precipBar,raindayBar,intenseBar, align="h", ncol=3 )
+  # create temp bar block
+  tempPlot<-plot_grid(tminBar,tmeanBar,tmaxBar, align="h", ncol=3 )
+  # create right side info block
+  infoPlot <- plot_grid(stationText, precipPlot, pIntens, drySpellText, tempPlot, ncol=1, 
+                        rel_heights = c(1,1,0.75,0.5,1), align = "v")
+  # combine into final plot
+  mainPlot <- plot_grid(mainPlot, infoPlot, ncol=2, rel_widths =c(1,0.3))
+ 
+  # plot title
+  title_theme <- ggdraw() +
+    draw_label(paste0("Station Climate Summary: ",currYearData$date[1]," to ",currYearData$date[nrow(currYearData)]),
+               fontface = "bold",colour="royalblue4",x = 0.05, hjust = 0)
+  mainPlot<-plot_grid(title_theme, mainPlot, ncol = 1, rel_heights = c(0.03, 1))
+ 
+  # add margin
+  mainPlot = mainPlot + theme(plot.margin = unit(c(0.25, 0, 0.5, 0), "in")) 
+  
+  # write out file
+  png("/home/crimmins/RProjects/ClimPlot/stationPlots/plots/test.png", width = 11, height = 8.5, units = "in", res = 300L)
+  #grid.newpage()
+  print(mainPlot, newpage = FALSE)
+  dev.off()
+  
+  # add logos
+  # Call back the plot
+  plot <- image_read("/home/crimmins/RProjects/ClimPlot/stationPlots/plots/test.png")
+  # And bring in a logo
+  #logo_raw <- image_read("./logos/UA_CLIMAS_logos.png") 
+  logo_raw <- image_read("/home/crimmins/RProjects/ClimPlot/logos/UA_CSAP_CLIMAS_logos_horiz.png") 
+  logo <- image_resize(logo_raw, geometry_size_percent(width=100,height = 100))
+  # Stack them on top of each other
+  #final_plot <- image_append((c(plot, logo)), stack = TRUE)
+  #final_plot <- image_mosaic((c(plot, logo)))
+  final_plot <- image_composite(plot, logo, offset = "+160+2375")
+  # And overwrite the plot without a logo
+  image_write(final_plot, "/home/crimmins/RProjects/ClimPlot/stationPlots/plots/test.png")  
+  
+  
+  
   
   
