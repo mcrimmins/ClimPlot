@@ -9,9 +9,14 @@ library(jsonlite)
 # get PRISM data
 options(prism.path = "/home/crimmins/RProjects/ClimPlot/PRISM")
 #get_prism_normals(type="ppt",resolution = "4km",mon = c(6,7,8,9), keepZip=FALSE)
+get_prism_normals(type="ppt",resolution = "4km",mon = c(1,2,3,4,5,10,11,12), keepZip=FALSE)
 
 files<-ls_prism_data(absPath=T)[,2]
 JJASppt<-stack(files)
+
+files<-ls_prism_data(absPath=T)[,2]
+ANNppt<-stack(files)
+
 
 ## ---- download PRISM data ----
 # Manually set universal date range
@@ -61,5 +66,11 @@ JJASppt <- crop(JJASppt, extent(gridStack[[1]]))
 JJASppt <- resample(JJASppt,gridStack[[1]],method='bilinear')
 
 writeRaster(JJASppt, filename="/home/crimmins/RProjects/ClimPlot/PRISM/JJASppt.grd", overwrite=TRUE)
+
+# crop and resample normals to ACIS grid
+ANNppt <- crop(ANNppt, extent(gridStack[[1]]))
+ANNppt <- resample(ANNppt,gridStack[[1]],method='bilinear')
+
+writeRaster(ANNppt, filename="/home/crimmins/RProjects/ClimPlot/PRISM/ANNppt.grd", overwrite=TRUE)
 
 

@@ -9,8 +9,8 @@ library(caTools)
 
 us <- getData("GADM", country="USA", level=1)
 # extract states (need to uppercase everything)
- state<-subset(us, NAME_1=="New Mexico")
-#state<-subset(us, NAME_1=="Arizona")
+# state<-subset(us, NAME_1=="New Mexico")
+state<-subset(us, NAME_1=="Arizona")
 #state<-subset(us, NAME_1 %in% c("New Mexico","Arizona"))
 
 dailyGT0<-NULL
@@ -76,13 +76,33 @@ p<-ggplot(dailyGT0, aes(dummyDate,percExt))+
   facet_wrap(~year, ncol = 5, nrow = 8)+
   xlab("Day of Year")+
   ylab("Percent Coverage - AZ")+
-  ggtitle("Percent of New Mexico observing >=0.01 inches during Monsoon Season (PRISM 1981-2019) ")
+  ggtitle("Percent of Arizona observing >=0.01 inches during Monsoon Season (PRISM 1981-2019) ")
 p<-p+geom_line(data=doyStats, aes(dummyDate,q50smooth))+
   geom_label(data = yearlyStats, aes(label=totalMonsoonDays), 
              x = -Inf, y = Inf, hjust=0, vjust=1,
              inherit.aes = FALSE)
 
-png("/home/crimmins/RProjects/ClimPlot/NMMonsoonDays.png", width = 11, height = 8.5, units = "in", res = 300L)
+png("/home/crimmins/RProjects/ClimPlot/AZMonsoonDays.png", width = 11, height = 8.5, units = "in", res = 300L)
+#grid.newpage()
+print(p, newpage = FALSE)
+## now add the text 
+dev.off()
+
+# plot single year
+temp<-subset(dailyGT0, year==2019)
+p<-ggplot(temp, aes(dummyDate,percExt))+
+  geom_bar(stat = "identity", fill="darkgreen")+
+  #facet_wrap(~year, ncol = 5, nrow = 8)+
+  xlab("Day of Year")+
+  ylab("Percent Coverage - AZ")+
+  ylim(0,100)+
+  ggtitle("Percent of Arizona observing >=0.01 inches during Monsoon Season (PRISM 1981-2019) ")
+p<-p+geom_line(data=doyStats, aes(dummyDate,q50smooth))+
+  geom_label(data = yearlyStats, aes(label=totalMonsoonDays), 
+             x = -Inf, y = Inf, hjust=0, vjust=1,
+             inherit.aes = FALSE)
+
+png("/home/crimmins/RProjects/ClimPlot/AZMonsoonDays_2019.png", width = 11, height = 8.5, units = "in", res = 300L)
 #grid.newpage()
 print(p, newpage = FALSE)
 ## now add the text 
