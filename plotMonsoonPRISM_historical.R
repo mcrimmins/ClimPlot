@@ -29,7 +29,7 @@ library(rmdformats)
 
 # Loop through years
 yr1=1981
-yr2=1989
+yr2=2019
 
 for (yearDir in yr1:yr2)
 {
@@ -39,7 +39,7 @@ for (yearDir in yr1:yr2)
   dir.create(paste0("/home/crimmins/RProjects/ClimPlot/monsoonMapshistorical/",yearDir,"/leafletMaps"),showWarnings = FALSE)
   # copy markdown file into dir
   file.copy("/home/crimmins/RProjects/ClimPlot/monsoonMapshistorical/SWmonsoonTemplateHistorical.Rmd",
-            paste0("/home/crimmins/RProjects/ClimPlot/monsoonMapshistorical/",yearDir))
+            paste0("/home/crimmins/RProjects/ClimPlot/monsoonMapshistorical/",yearDir), overwrite = TRUE)
   
   
 ## ---- download PRISM data ----
@@ -102,6 +102,8 @@ gridStack<-stack(rasterList)
 gridExtent<-extent(min(out$meta$lon), max(out$meta$lon), min(out$meta$lat), max(out$meta$lat))
 gridStack<-setExtent(gridStack, gridExtent, keepres=FALSE, snap=FALSE)
 names(gridStack)<-allDates
+# grab grid for ts extent
+gridStackTS<-gridStack
 # set 0 and neg to NA
 gridStack[gridStack <= 0] <- NA
 ## ----
@@ -109,7 +111,9 @@ gridStack[gridStack <= 0] <- NA
 # create summary grids ----
 # total precip
 totalPrecipAll<-calc(gridStack, sum, na.rm=TRUE)
-  totalPrecipAll[totalPrecipAll <= 0] <- NA
+  totalPrecipAll_w0<-totalPrecipAll
+totalPrecipAll[totalPrecipAll <= 0] <- NA
+  totalPrecipAll_w0[totalPrecipAll_w0 < 0]<- NA
 # percent of average
 JJASppt<-stack("/home/crimmins/RProjects/ClimPlot/PRISM/JJASppt.grd")
   JJASppt<-JJASppt/25.4
@@ -145,6 +149,19 @@ daysSince <-length(allDates)-(calc(gridStack, fun=function(x){max(which(x > 0.05
   daysSince[daysSince==Inf] <- NA
 ## ----
 
+  # percentile rank of precip
+  # load allCumSum
+  allCumSum<-stack("/home/crimmins/RProjects/ClimPlot/AZNM_PRISM_Monsoon_cumPrecip_1981_2018.grd")
+  # get subsets for the current day
+  doyCumSum<-subset(allCumSum, seq(i,nlayers(allCumSum)-(108-i),by=108))
+  # add current year
+  doyCumSum<-stack(doyCumSum,totalPrecipAll_w0)
+  
+  perc.rank<-function(x) trunc(rank(x,ties.method = "average"))/length(x)
+  percRankPrecip <- calc(doyCumSum, fun=perc.rank)
+  percRankPrecip <-(percRankPrecip[[nlayers(percRankPrecip)]])*100
+  ## ----
+  
 # process daily anomalies ----
 dailyAnoms= list()
   i<-1
@@ -220,6 +237,141 @@ p<-ggplot(dailyAnomsMelt, aes(x=Date,y=Coverage,fill=Anomaly))+
       image_write(final_plot, paste0("/home/crimmins/RProjects/ClimPlot/monsoonMapshistorical/",yearDir,"/SW_Monsoon_Anomaly_TS.png"))
 # ----
 
+      # ----
+      # PROCESS and PLOT daily monsoon extent in AZ and NM
+      # precip threshold
+      thresh<-0.01
+      # load datasets
+      load("/home/crimmins/RProjects/ClimPlot/AZ_doyStats.RData")
+      load("/home/crimmins/RProjects/ClimPlot/NM_doyStats.RData")
+      USPoly <- getData("GADM", country="USA", level=1)
+      NMPoly<-subset(USPoly, NAME_1=="New Mexico")
+      AZPoly<-subset(USPoly, NAME_1=="Arizona")
+      # extract extents
+      currYearClip <- raster::mask(gridStackTS, AZPoly)
+      # get counts
+      AZts<-as.data.frame(cellStats(currYearClip, function(i, ...) sum(i>thresh, na.rm = TRUE)))
+      currYearClip <- raster::mask(gridStackTS, NMPoly)
+      # get counts
+      NMts<-as.data.frame(cellStats(currYearClip, function(i, ...) sum(i>thresh, na.rm = TRUE)))
+      # get base count
+      tempGrid <- raster::mask(gridStackTS[[1]], AZPoly)
+      baseCountAZ<-cellStats(tempGrid, function(i, ...) sum(i>=0, na.rm = TRUE)) 
+      tempGrid <- raster::mask(gridStackTS[[1]], NMPoly)
+      baseCountNM<-cellStats(tempGrid, function(i, ...) sum(i>=0, na.rm = TRUE))  
+      
+      # AZ data table
+      # get dates from col names
+      colnames(AZts)<-"counts"
+      AZts$percExt<-(AZts$counts/baseCountAZ)*100
+      AZts$dates<-rownames(AZts)
+      AZts<-tidyr::separate(AZts,dates, c(NA,"year",NA,"month",NA,"day"),sep=c(1,5,6,8,9,11), convert = TRUE)
+      # build date and doy
+      AZts$date<-as.Date(paste0(AZts$year,"-",AZts$month,"-",AZts$day), format="%Y-%m-%d")
+      # dummy date var
+      AZts$dummyDate<-as.Date(paste0(2000,"-",AZts$month,"-",AZts$day), format="%Y-%m-%d")
+      AZts$doy<-as.numeric(format(AZts$dummyDate, "%j"))
+      # join stats to data table
+      AZ_doyStats$doy<-as.numeric(format(AZ_doyStats$dummyDate, "%j"))
+      AZts<-merge(AZts, AZ_doyStats, by="doy", all.y=TRUE)
+      AZts$abvQ50<-ifelse(AZts$percExt>=AZts$q50smooth,1,0) # monsoon days
+      
+      # NM data table
+      # get dates from col names
+      colnames(NMts)<-"counts"
+      NMts$percExt<-(NMts$counts/baseCountNM)*100
+      NMts$dates<-rownames(NMts)
+      NMts<-tidyr::separate(NMts,dates, c(NA,"year",NA,"month",NA,"day"),sep=c(1,5,6,8,9,11), convert = TRUE)
+      # build date and doy
+      NMts$date<-as.Date(paste0(NMts$year,"-",NMts$month,"-",NMts$day), format="%Y-%m-%d")
+      # dummy date var
+      NMts$dummyDate<-as.Date(paste0(2000,"-",NMts$month,"-",NMts$day), format="%Y-%m-%d")
+      NMts$doy<-as.numeric(format(NMts$dummyDate, "%j"))
+      # join stats to data table
+      NM_doyStats$doy<-as.numeric(format(NM_doyStats$dummyDate, "%j"))
+      NMts<-merge(NMts, NM_doyStats, by="doy", all.y=TRUE)
+      NMts$abvQ50<-ifelse(NMts$percExt>=NMts$q50smooth,1,0) # monsoon days    
+      
+      
+      #  AZ plot of daily monsoon extent by year
+      p<-ggplot(AZts, aes(dummyDate.y,percExt))+
+        geom_bar(stat = "identity", fill="darkgreen")+
+        xlab("Day of Year")+
+        ylab("Percent Coverage - AZ")+
+        ylim(0,100)
+      p<-p+geom_line(data=AZts, aes(dummyDate.y,q50smooth))+
+        geom_label(aes(label=sum(AZts$abvQ50, na.rm=TRUE)), 
+                   x = -Inf, y = Inf, hjust=0, vjust=1,
+                   inherit.aes = FALSE)+
+        ggtitle(paste0("Percent of Arizona observing >=0.01 inches daily total precip: ",allDates[1]," to ",allDates[length(allDates)]))+
+        labs(caption=paste0("Plot created: ",format(Sys.time(), "%Y-%m-%d"),
+                            "\nThe University of Arizona\nhttps://cals.arizona.edu/climate/\nData Source: PRISM Climate Group\nRCC-ACIS"))+
+        theme_bw()+
+        theme(axis.text=element_text(size=12),
+              axis.title=element_text(size=14),
+              plot.title=element_text(size=14, face = "bold"))
+      
+      # write out file
+      png(paste0("/home/crimmins/RProjects/ClimPlot/monsoonMapshistorical/",yearDir,"/AZMonsoonDays.png"), width = 11, height = 8, units = "in", res = 300L)
+      #grid.newpage()
+      print(p, newpage = FALSE)
+      dev.off()
+      
+      # add logos
+      # Call back the plot
+      plot <- image_read(paste0("/home/crimmins/RProjects/ClimPlot/monsoonMapshistorical/",yearDir,"/AZMonsoonDays.png"))
+      # And bring in a logo
+      #logo_raw <- image_read("./logos/UA_CLIMAS_logos.png") 
+      logo_raw <- image_read("/home/crimmins/RProjects/ClimPlot/logos/UA_CSAP_CLIMAS_logos_horiz.png") 
+      logo <- image_resize(logo_raw, geometry_size_percent(width=120,height = 120))
+      # Stack them on top of each other
+      #final_plot <- image_append((c(plot, logo)), stack = TRUE)
+      #final_plot <- image_mosaic((c(plot, logo)))
+      final_plot <- image_composite(plot, logo, offset = "+150+2150")
+      # And overwrite the plot without a logo
+      image_write(final_plot, paste0("/home/crimmins/RProjects/ClimPlot/monsoonMapshistorical/",yearDir,"/AZMonsoonDays.png"))   
+      
+      #  NM plot of daily monsoon extent by year
+      p<-ggplot(NMts, aes(dummyDate.y,percExt))+
+        geom_bar(stat = "identity", fill="darkgreen")+
+        xlab("Day of Year")+
+        ylab("Percent Coverage - NM")+
+        ylim(0,100)
+      p<-p+geom_line(data=NMts, aes(dummyDate.y,q50smooth))+
+        geom_label(aes(label=sum(NMts$abvQ50, na.rm=TRUE)), 
+                   x = -Inf, y = Inf, hjust=0, vjust=1,
+                   inherit.aes = FALSE)+
+        ggtitle(paste0("Percent of New Mexico observing >=0.01 inches daily total precip: ",allDates[1]," to ",allDates[length(allDates)]))+
+        labs(caption=paste0("Plot created: ",format(Sys.time(), "%Y-%m-%d"),
+                            "\nThe University of Arizona\nhttps://cals.arizona.edu/climate/\nData Source: PRISM Climate Group\nRCC-ACIS"))+
+        theme_bw()+
+        theme(axis.text=element_text(size=12),
+              axis.title=element_text(size=14),
+              plot.title=element_text(size=14, face = "bold"))
+      
+      # write out file
+      png(paste0("/home/crimmins/RProjects/ClimPlot/monsoonMapshistorical/",yearDir,"/NMMonsoonDays.png"), width = 11, height = 8, units = "in", res = 300L)
+      #grid.newpage()
+      print(p, newpage = FALSE)
+      dev.off()
+      
+      # add logos
+      # Call back the plot
+      plot <- image_read(paste0("/home/crimmins/RProjects/ClimPlot/monsoonMapshistorical/",yearDir,"/NMMonsoonDays.png"))
+      # And bring in a logo
+      #logo_raw <- image_read("./logos/UA_CLIMAS_logos.png") 
+      logo_raw <- image_read("/home/crimmins/RProjects/ClimPlot/logos/UA_CSAP_CLIMAS_logos_horiz.png") 
+      logo <- image_resize(logo_raw, geometry_size_percent(width=120,height = 120))
+      # Stack them on top of each other
+      #final_plot <- image_append((c(plot, logo)), stack = TRUE)
+      #final_plot <- image_mosaic((c(plot, logo)))
+      final_plot <- image_composite(plot, logo, offset = "+150+2150")
+      # And overwrite the plot without a logo
+      image_write(final_plot, paste0("/home/crimmins/RProjects/ClimPlot/monsoonMapshistorical/",yearDir,"/NMMonsoonDays.png"))   
+      
+      # ----    
+      
+      
 # PLOT total precip vs elevation categories ----
       elevPrecip<-as.data.frame(getValues(stack(totalPrecipAll,elevGrid)))
       colnames(elevPrecip)<-c("precip","elevation")
@@ -470,6 +622,83 @@ leafMap<-leaflet() %>% addTiles() %>%
 
 saveWidget(leafMap, file=paste0("/home/crimmins/RProjects/ClimPlot/monsoonMapshistorical/",yearDir,"/leafletMaps/SW_Monsoon_PercentPrecip.html"))
 # ----- end PERCENT AVG ----
+
+
+# RRECIP PERCENTILES Map -----
+# colorramp for total precip
+precipCols<-colorRampPalette(c("darkgoldenrod4", "white", "darkgreen"))(50)
+precBreaks<-seq(0,100,10)
+precLabs<-as.character(seq(0,100,10))
+precLabs[11]<-"100"
+precLabs[1]<-"0"
+#precBreaksmin<-seq(1,19,2)
+
+#theme_set(theme_bw())
+p<-gplot(percRankPrecip) + geom_tile(aes(fill = value)) +
+  #scale_fill_gradient2(low = 'white', high = 'blue') +
+  #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="darkgoldenrod", 
+  #                     name="inches", limits=c(0,20),oob=squish)+
+  
+  scale_fill_gradientn(colours = precipCols, na.value="darkgoldenrod", 
+                       name="%tile", limits=c(0,100),oob=squish, breaks=precBreaks, labels=precLabs, expand=NULL)+
+  guides(fill= guide_colorbar(barheight=15,nbin = 500, raster = FALSE))+
+  
+  coord_equal(xlim = c(-115,-102), ylim = c(31,38), expand = FALSE)+
+  xlab("Longitude") + ylab("Latitude") 
+
+p<-p +  geom_polygon( data=all_states, aes(x=X, y=Y, group = PID),colour="black", fill=NA, size=0.25 )+
+  #scale_x_continuous(breaks = c(-120,-140))+
+  #ggtitle("Daily Total Precip (inches) - PRISM")+
+  ggtitle(paste0("Total Precipitation Percentile Rank (1981-2018 ranking period): ",allDates[1]," to ",allDates[length(allDates)]))+
+  labs(caption=paste0("Plot created: ",format(Sys.time(), "%Y-%m-%d"),
+                      "\nThe University of Arizona\nhttps://cals.arizona.edu/climate/\nData Source: PRISM Climate Group\nRCC-ACIS"))+
+  theme(plot.title=element_text(size=14, face = "bold"))
+
+p<-p+geom_path(data = tribes_df, 
+               aes(x = long, y = lat, group = group),
+               color = 'azure4', size = .2)
+
+p<-p+geom_point(data = SWCities, aes(x = lon, y = lat), size = 1, 
+                shape = 20)
+
+p<-p+geom_text(data = SWCities, aes(x = lon, y = lat, label = City), 
+               size = 3, col = "black", fontface = "bold", nudge_y = 0.1)
+
+# write out file
+png(paste0("/home/crimmins/RProjects/ClimPlot/monsoonMapshistorical/",yearDir,"/SW_Monsoon_RankPrecip.png"), width = 16, height = 8, units = "in", res = 300L)
+#grid.newpage()
+print(p, newpage = FALSE)
+dev.off()
+
+# add logos
+# Call back the plot
+plot <- image_read(paste0("/home/crimmins/RProjects/ClimPlot/monsoonMapshistorical/",yearDir,"/SW_Monsoon_RankPrecip.png"))
+# And bring in a logo
+#logo_raw <- image_read("./logos/UA_CLIMAS_logos.png")
+logo_raw <- image_read("/home/crimmins/RProjects/ClimPlot/logos/UA_CSAP_CLIMAS_logos_horiz.png") 
+logo <- image_resize(logo_raw, geometry_size_percent(width=120,height = 120))
+# Stack them on top of each other
+#final_plot <- image_append((c(plot, logo)), stack = TRUE)
+#final_plot <- image_mosaic((c(plot, logo)))
+final_plot <- image_composite(plot, logo, offset = "+510+2150")
+# And overwrite the plot without a logo
+image_write(final_plot, paste0("/home/crimmins/RProjects/ClimPlot/monsoonMapshistorical/",yearDir,"/SW_Monsoon_RankPrecip.png"))
+
+# leaflet interactive
+pal <- colorNumeric(c("darkgoldenrod4", "white", "darkgreen"), c(0,100),
+                    na.color = "transparent")
+crs(percRankPrecip) <- sp::CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+
+leafMap<-leaflet() %>% addTiles() %>%
+  addRasterImage(percRankPrecip, colors = pal, opacity = 0.8, layerId = "%tile") %>%
+  addLegend(pal = pal, values = values(percRankPrecip),
+            title=paste0("%-tile rank of total precip:<br> ",allDates[1]," to ",allDates[length(allDates)]))%>%
+  addMouseCoordinates() %>%
+  addImageQuery(percRankPrecip, type="mousemove", layerId = "%tile", digits = 0, prefix = "")
+
+saveWidget(leafMap, file=paste0("/home/crimmins/RProjects/ClimPlot/monsoonMapshistorical/",yearDir,"/leafletMaps/SW_Monsoon_RankPrecip.html"), selfcontained = FALSE)
+# ----- end PERCENTILE ----
+
 
 # RAIN DAYS Percent Map -----
 # colorramp for total precip

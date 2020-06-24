@@ -9,8 +9,8 @@ library(caTools)
 
 us <- getData("GADM", country="USA", level=1)
 # extract states (need to uppercase everything)
-# state<-subset(us, NAME_1=="New Mexico")
-state<-subset(us, NAME_1=="Arizona")
+ state<-subset(us, NAME_1=="New Mexico")
+# state<-subset(us, NAME_1=="Arizona")
 #state<-subset(us, NAME_1 %in% c("New Mexico","Arizona"))
 
 dailyGT0<-NULL
@@ -54,6 +54,14 @@ doyStats<- ddply(dailyGT0,.(dummyDate),summarise,
                  avg = mean(percExt,na.rm='TRUE'))
 doyStats$q50smooth<-runmean(doyStats$q50, 15, align = "center", endrule = "mean")
 
+# save doyStats for plots in historical/realtime
+#AZ_doyStats<-doyStats
+#save(AZ_doyStats, file="/home/crimmins/RProjects/ClimPlot/AZ_doyStats.RData")
+# NM
+#NM_doyStats<-doyStats
+#save(NM_doyStats, file="/home/crimmins/RProjects/ClimPlot/NM_doyStats.RData")
+#
+
 # join stats to data table
 doyStats$doy<-as.numeric(format(doyStats$dummyDate, "%j"))
 tempGT0<-merge(dailyGT0, doyStats, by="doy")
@@ -75,14 +83,17 @@ p<-ggplot(dailyGT0, aes(dummyDate,percExt))+
   geom_bar(stat = "identity", fill="darkgreen")+
   facet_wrap(~year, ncol = 5, nrow = 8)+
   xlab("Day of Year")+
-  ylab("Percent Coverage - AZ")+
-  ggtitle("Percent of Arizona observing >=0.01 inches during Monsoon Season (PRISM 1981-2019) ")
+  ylab("Percent Coverage - NM")+
+  ggtitle("Percent of New Mexico observing >=0.01 inches daily total precipitation, June 15th-Sep 30th (PRISM 1981-2019) ")
 p<-p+geom_line(data=doyStats, aes(dummyDate,q50smooth))+
   geom_label(data = yearlyStats, aes(label=totalMonsoonDays), 
              x = -Inf, y = Inf, hjust=0, vjust=1,
-             inherit.aes = FALSE)
+             inherit.aes = FALSE)+
+  labs(caption=paste0("Plot created: ",format(Sys.time(), "%Y-%m-%d"),
+                      "\nThe University of Arizona\nhttps://cals.arizona.edu/climate/\nData Source: PRISM Climate Group\nRCC-ACIS"))
+  
 
-png("/home/crimmins/RProjects/ClimPlot/AZMonsoonDays.png", width = 11, height = 8.5, units = "in", res = 300L)
+png("/home/crimmins/RProjects/ClimPlot/NMMonsoonDays_allYears.png", width = 11, height = 8.5, units = "in", res = 300L)
 #grid.newpage()
 print(p, newpage = FALSE)
 ## now add the text 

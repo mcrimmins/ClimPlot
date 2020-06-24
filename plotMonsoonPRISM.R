@@ -35,15 +35,15 @@ library(rmdformats)
 
 ## ---- download PRISM data ----
 # Manually set universal date range - ACIS PRISM current day-1, correct for LINUX UTC time
-dateRangeStart="2019-06-15"
-dateRangeEnd="2019-09-30"
+#dateRangeStart="2019-06-15"
+#dateRangeEnd="2019-09-30"
 
 # auto date range...start with 6-15 and run on 6-17 to get two days of data, end on 10/1
-# dateRangeStart="2019-06-15"
-# dateRangeEnd=as.Date(format(as.POSIXct(Sys.Date()),usetz=TRUE, tz="Etc/GMT+7")) # date on local time zone
-#  if(dateRangeEnd<"2019-06-16" | dateRangeEnd>="2019-10-01"){
-#    stop()
-#  }
+ dateRangeStart="2020-06-15"
+ dateRangeEnd=as.Date(format(as.POSIXct(Sys.Date()),usetz=TRUE, tz="Etc/GMT+7")) # date on local time zone
+  if(dateRangeEnd<"2020-06-16" | dateRangeEnd>="2020-10-01"){
+    stop()
+  }
 
 # generate dates -- keep with PRISM date
 allDates<-seq(as.Date(dateRangeStart), as.Date(dateRangeEnd),1)
@@ -93,6 +93,8 @@ gridStack<-stack(rasterList)
 gridExtent<-extent(min(out$meta$lon), max(out$meta$lon), min(out$meta$lat), max(out$meta$lat))
 gridStack<-setExtent(gridStack, gridExtent, keepres=FALSE, snap=FALSE)
 names(gridStack)<-allDates
+# grab grid for ts extent
+gridStackTS<-gridStack
 # set 0 and neg to NA
 gridStack[gridStack <= 0] <- NA
 ## ----
@@ -225,6 +227,140 @@ p<-ggplot(dailyAnomsMelt, aes(x=Date,y=Coverage,fill=Anomaly))+
       image_write(final_plot, "/home/crimmins/RProjects/ClimPlot/monsoonMaps/SW_Monsoon_Anomaly_TS.png")
 # ----
 
+# ----
+# PROCESS and PLOT daily monsoon extent in AZ and NM
+      # precip threshold
+      thresh<-0.01
+      # load datasets
+      load("/home/crimmins/RProjects/ClimPlot/AZ_doyStats.RData")
+      load("/home/crimmins/RProjects/ClimPlot/NM_doyStats.RData")
+        USPoly <- getData("GADM", country="USA", level=1)
+        NMPoly<-subset(USPoly, NAME_1=="New Mexico")
+        AZPoly<-subset(USPoly, NAME_1=="Arizona")
+       # extract extents
+        currYearClip <- raster::mask(gridStackTS, AZPoly)
+          # get counts
+          AZts<-as.data.frame(cellStats(currYearClip, function(i, ...) sum(i>thresh, na.rm = TRUE)))
+        currYearClip <- raster::mask(gridStackTS, NMPoly)
+          # get counts
+          NMts<-as.data.frame(cellStats(currYearClip, function(i, ...) sum(i>thresh, na.rm = TRUE)))
+        # get base count
+          tempGrid <- raster::mask(gridStackTS[[1]], AZPoly)
+            baseCountAZ<-cellStats(tempGrid, function(i, ...) sum(i>=0, na.rm = TRUE)) 
+          tempGrid <- raster::mask(gridStackTS[[1]], NMPoly)
+            baseCountNM<-cellStats(tempGrid, function(i, ...) sum(i>=0, na.rm = TRUE))  
+            
+        # AZ data table
+            # get dates from col names
+            colnames(AZts)<-"counts"
+            AZts$percExt<-(AZts$counts/baseCountAZ)*100
+            AZts$dates<-rownames(AZts)
+            AZts<-tidyr::separate(AZts,dates, c(NA,"year",NA,"month",NA,"day"),sep=c(1,5,6,8,9,11), convert = TRUE)
+            # build date and doy
+            AZts$date<-as.Date(paste0(AZts$year,"-",AZts$month,"-",AZts$day), format="%Y-%m-%d")
+            # dummy date var
+            AZts$dummyDate<-as.Date(paste0(2000,"-",AZts$month,"-",AZts$day), format="%Y-%m-%d")
+            AZts$doy<-as.numeric(format(AZts$dummyDate, "%j"))
+            # join stats to data table
+            AZ_doyStats$doy<-as.numeric(format(AZ_doyStats$dummyDate, "%j"))
+            AZts<-merge(AZts, AZ_doyStats, by="doy", all.y=TRUE)
+            AZts$abvQ50<-ifelse(AZts$percExt>=AZts$q50smooth,1,0) # monsoon days
+          
+        # NM data table
+            # get dates from col names
+            colnames(NMts)<-"counts"
+            NMts$percExt<-(NMts$counts/baseCountNM)*100
+            NMts$dates<-rownames(NMts)
+            NMts<-tidyr::separate(NMts,dates, c(NA,"year",NA,"month",NA,"day"),sep=c(1,5,6,8,9,11), convert = TRUE)
+            # build date and doy
+            NMts$date<-as.Date(paste0(NMts$year,"-",NMts$month,"-",NMts$day), format="%Y-%m-%d")
+            # dummy date var
+            NMts$dummyDate<-as.Date(paste0(2000,"-",NMts$month,"-",NMts$day), format="%Y-%m-%d")
+            NMts$doy<-as.numeric(format(NMts$dummyDate, "%j"))
+            # join stats to data table
+            NM_doyStats$doy<-as.numeric(format(NM_doyStats$dummyDate, "%j"))
+            NMts<-merge(NMts, NM_doyStats, by="doy", all.y=TRUE)
+            NMts$abvQ50<-ifelse(NMts$percExt>=NMts$q50smooth,1,0) # monsoon days    
+              
+            
+            #  AZ plot of daily monsoon extent by year
+            p<-ggplot(AZts, aes(dummyDate.y,percExt))+
+              geom_bar(stat = "identity", fill="darkgreen")+
+              xlab("Day of Year")+
+              ylab("Percent Coverage - AZ")+
+              ylim(0,100)
+            p<-p+geom_line(data=AZts, aes(dummyDate.y,q50smooth))+
+              geom_label(aes(label=sum(AZts$abvQ50, na.rm=TRUE)), 
+                         x = -Inf, y = Inf, hjust=0, vjust=1,
+                         inherit.aes = FALSE)+
+            ggtitle(paste0("Percent of Arizona observing >=0.01 inches daily total precip: ",allDates[1]," to ",allDates[length(allDates)]))+
+              labs(caption=paste0("Plot created: ",format(Sys.time(), "%Y-%m-%d"),
+                                  "\nThe University of Arizona\nhttps://cals.arizona.edu/climate/\nData Source: PRISM Climate Group\nRCC-ACIS"))+
+              theme_bw()+
+              theme(axis.text=element_text(size=12),
+                    axis.title=element_text(size=14),
+                    plot.title=element_text(size=14, face = "bold"))
+            
+            # write out file
+            png("/home/crimmins/RProjects/ClimPlot/monsoonMaps/AZMonsoonDays.png", width = 11, height = 8, units = "in", res = 300L)
+            #grid.newpage()
+            print(p, newpage = FALSE)
+            dev.off()
+            
+            # add logos
+            # Call back the plot
+            plot <- image_read("/home/crimmins/RProjects/ClimPlot/monsoonMaps/AZMonsoonDays.png")
+            # And bring in a logo
+            #logo_raw <- image_read("./logos/UA_CLIMAS_logos.png") 
+            logo_raw <- image_read("/home/crimmins/RProjects/ClimPlot/logos/UA_CSAP_CLIMAS_logos_horiz.png") 
+            logo <- image_resize(logo_raw, geometry_size_percent(width=120,height = 120))
+            # Stack them on top of each other
+            #final_plot <- image_append((c(plot, logo)), stack = TRUE)
+            #final_plot <- image_mosaic((c(plot, logo)))
+            final_plot <- image_composite(plot, logo, offset = "+150+2150")
+            # And overwrite the plot without a logo
+            image_write(final_plot, "/home/crimmins/RProjects/ClimPlot/monsoonMaps/AZMonsoonDays.png")   
+      
+            #  NM plot of daily monsoon extent by year
+            p<-ggplot(NMts, aes(dummyDate.y,percExt))+
+              geom_bar(stat = "identity", fill="darkgreen")+
+              xlab("Day of Year")+
+              ylab("Percent Coverage - NM")+
+              ylim(0,100)
+            p<-p+geom_line(data=NMts, aes(dummyDate.y,q50smooth))+
+              geom_label(aes(label=sum(NMts$abvQ50, na.rm=TRUE)), 
+                         x = -Inf, y = Inf, hjust=0, vjust=1,
+                         inherit.aes = FALSE)+
+              ggtitle(paste0("Percent of New Mexico observing >=0.01 inches daily total precip: ",allDates[1]," to ",allDates[length(allDates)]))+
+              labs(caption=paste0("Plot created: ",format(Sys.time(), "%Y-%m-%d"),
+                                  "\nThe University of Arizona\nhttps://cals.arizona.edu/climate/\nData Source: PRISM Climate Group\nRCC-ACIS"))+
+              theme_bw()+
+              theme(axis.text=element_text(size=12),
+                    axis.title=element_text(size=14),
+                    plot.title=element_text(size=14, face = "bold"))
+            
+            # write out file
+            png("/home/crimmins/RProjects/ClimPlot/monsoonMaps/NMMonsoonDays.png", width = 11, height = 8, units = "in", res = 300L)
+            #grid.newpage()
+            print(p, newpage = FALSE)
+            dev.off()
+            
+            # add logos
+            # Call back the plot
+            plot <- image_read("/home/crimmins/RProjects/ClimPlot/monsoonMaps/NMMonsoonDays.png")
+            # And bring in a logo
+            #logo_raw <- image_read("./logos/UA_CLIMAS_logos.png") 
+            logo_raw <- image_read("/home/crimmins/RProjects/ClimPlot/logos/UA_CSAP_CLIMAS_logos_horiz.png") 
+            logo <- image_resize(logo_raw, geometry_size_percent(width=120,height = 120))
+            # Stack them on top of each other
+            #final_plot <- image_append((c(plot, logo)), stack = TRUE)
+            #final_plot <- image_mosaic((c(plot, logo)))
+            final_plot <- image_composite(plot, logo, offset = "+150+2150")
+            # And overwrite the plot without a logo
+            image_write(final_plot, "/home/crimmins/RProjects/ClimPlot/monsoonMaps/NMMonsoonDays.png")   
+
+# ----      
+      
 # PLOT total precip vs elevation categories ----
       elevPrecip<-as.data.frame(getValues(stack(totalPrecipAll,elevGrid)))
       colnames(elevPrecip)<-c("precip","elevation")
