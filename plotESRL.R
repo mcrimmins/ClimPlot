@@ -6,6 +6,7 @@ library(RCurl)
 library(ncdf4)
 library(rasterVis)
 library(grid)
+library(RColorBrewer)
 
 # to do 
 # create precip anom maps from long-term means

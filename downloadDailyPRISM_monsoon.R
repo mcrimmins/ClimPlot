@@ -8,7 +8,7 @@ library(raster)
 
 #loop through each and create growing stack of cumulative precip - does not work with webservice ----
 #write to file
-for(year in 2019:2019){
+for(year in 2019:2020){
     # create current date
     dateRangeStart=paste0(year,"-06-15")
     dateRangeEnd= paste0(year,"-09-30")

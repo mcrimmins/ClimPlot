@@ -1,6 +1,7 @@
 # create monsoon climo maps for AZ and/or NM 
 # adapted from monsoonExtentTS.R and plotMonsoonPRISM.R
 # MAC 05/18/2020
+# update data with downloadDailyPRISM_monsoon.R
 
 library(raster)
 # library(plyr)
@@ -22,22 +23,29 @@ state<-subset(us, NAME_1=="Arizona")
 thresh<-0.01
 
 gridStack<-list()
+gridStackSum<-list()
 i<-1
 
-for(year in 1981:2019){
+for(year in 1991:2020){
   currYear<-stack(paste0("/home/crimmins/RProjects/ClimPlot/monsoonDailyData/AZNM_PRISM_Monsoon_",year,"_dailyPrecip.grd"))
   
   gridStack[[i]] <- calc(currYear, fun=function(x){sum(x >= thresh, na.rm = TRUE)})
+  gridStackSum[[i]] <- calc(currYear, fun=function(x){sum(x, na.rm = TRUE)})
+  
   i<-i+1
   print(year)
 }
 # combine into stack
 rainDays = stack(gridStack)
+sumPrecip=stack(gridStackSum)
 
 meanRainDays<-round(calc(rainDays, mean),0)  
 meanRainDays[meanRainDays <= 0] <- NA
 
-percAvg<-(rainDays[[39]]/meanRainDays)*100
+meanPrecip<-calc(sumPrecip,mean)
+meanPrecip[meanPrecip<=0]<-NA
+
+#percAvg<-(rainDays[[39]]/meanRainDays)*100
 
 # PLOT MAP
 library(ggplot2)
@@ -95,7 +103,7 @@ p<-gplot(meanRainDays) + geom_tile(aes(fill = value)) +
 p<-p +  geom_polygon( data=all_states, aes(x=X, y=Y, group = PID),colour="black", fill=NA, size=0.25 )+
   #scale_x_continuous(breaks = c(-120,-140))+
   #ggtitle("Daily Total Precip (inches) - PRISM")+
-  ggtitle(paste0("Average number of days with rain (>0.01 in): June 15th - Sept. 30th (1981-2019 period) "))+
+  ggtitle(paste0("Average number of days with rain (>0.01 in): June 15th - Sept. 30th (1991-2020 period) "))+
   labs(caption=paste0("Plot created: ",format(Sys.time(), "%Y-%m-%d"),
                       "\nThe University of Arizona\nhttps://cals.arizona.edu/climate/\nData Source: PRISM Climate Group\nRCC-ACIS"))+
   theme(plot.title=element_text(size=15, face = "bold"))
@@ -111,14 +119,14 @@ p<-p+geom_text(data = SWCities, aes(x = lon, y = lat, label = City),
                size = 5, col = "black", fontface = "bold", nudge_y = 0.1)
 
 # write out file
-png("/home/crimmins/RProjects/ClimPlot/monsoonClimo_maps/AZMonsoon_MeanRainDays.png", width = 10, height = 10, units = "in", res = 300L)
+png("/home/crimmins/RProjects/ClimPlot/monsoonClimo_maps/AZMonsoon_MeanRainDays_1991-2020.png", width = 10, height = 10, units = "in", res = 300L)
 #grid.newpage()
 print(p, newpage = FALSE)
 dev.off()
 
 # add logos
 # Call back the plot
-plot <- image_read("/home/crimmins/RProjects/ClimPlot/monsoonClimo_maps/AZMonsoon_MeanRainDays.png")
+plot <- image_read("/home/crimmins/RProjects/ClimPlot/monsoonClimo_maps/AZMonsoon_MeanRainDays_1991-2020.png")
 # And bring in a logo
 #logo_raw <- image_read("./logos/UA_CLIMAS_logos.png")
 logo_raw <- image_read("/home/crimmins/RProjects/ClimPlot/logos/UA_CSAP_CLIMAS_logos_horiz.png") 
@@ -128,7 +136,7 @@ logo <- image_resize(logo_raw, geometry_size_percent(width=120,height = 120))
 #final_plot <- image_mosaic((c(plot, logo)))
 final_plot <- image_composite(plot, logo, offset = "+310+2760")
 # And overwrite the plot without a logo
-image_write(final_plot, "/home/crimmins/RProjects/ClimPlot/monsoonClimo_maps/AZMonsoon_MeanRainDays.png")
+image_write(final_plot, "/home/crimmins/RProjects/ClimPlot/monsoonClimo_maps/AZMonsoon_MeanRainDays_1991-2020.png")
 #####
 
 # RAIN DAYS Percent Map -----
@@ -263,6 +271,8 @@ image_write(final_plot, "/home/crimmins/RProjects/ClimPlot/monsoonClimo_maps/AZM
 # monthly values
 JJASppt<-stack("/home/crimmins/RProjects/ClimPlot/PRISM/JJASppt.grd")
 JJASppt<-JJASppt/25.4
+
+
 # colorramp for total precip
 precipCols<-colorRampPalette(c("lightblue", "dodgerblue3", "palegreen","green4","salmon","orangered3",
                                "lightgoldenrod1","orange2","plum2","purple"))(50)
@@ -328,12 +338,22 @@ image_write(final_plot, "/home/crimmins/RProjects/ClimPlot/monsoonClimo_maps/AZ_
 # Seasonal TOTAL
 # colorramp for total precip
 totalJJAS<-calc(JJASppt, sum, na.rm=TRUE)
+
+# or from Dailies 6/15-9/30
+totalJJAS<-meanPrecip
+
 precipCols<-colorRampPalette(c("lightblue", "dodgerblue3", "palegreen","green4","salmon","orangered3",
                                "lightgoldenrod1","orange2","plum2","purple"))(50)
-precBreaks<-seq(0,20,2)
-precLabs<-as.character(seq(0,20,2))
-precLabs[11]<-">20"
+# precBreaks<-seq(0,20,2)
+# precLabs<-as.character(seq(0,20,2))
+# precLabs[11]<-">20"
+# precLabs[1]<-"0.01"
+
+precBreaks<-seq(0,18,2)
+precLabs<-as.character(seq(0,18,2))
+precLabs[10]<-">18"
 precLabs[1]<-"0.01"
+
 #precBreaksmin<-seq(1,19,2)
 
 #theme_set(theme_bw())
@@ -342,7 +362,7 @@ p<-gplot(totalJJAS) + geom_tile(aes(fill = value)) +
   #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="darkgoldenrod",
   #                     name="inches", limits=c(0,20),oob=squish)+
   scale_fill_gradientn(colours = precipCols, na.value="darkgoldenrod",
-                       name="inches", limits=c(0,20),oob=squish, breaks=precBreaks, labels=precLabs, expand=NULL)+
+                       name="inches", limits=c(0,18),oob=squish, breaks=precBreaks, labels=precLabs, expand=NULL)+
   guides(fill= guide_colorbar(barheight=15,nbin = 500, raster = FALSE))+
 
   coord_equal(xlim = c(lonW,lonE), ylim = c(latS,latN), expand = FALSE)+
@@ -351,7 +371,7 @@ p<-gplot(totalJJAS) + geom_tile(aes(fill = value)) +
 p<-p +  geom_polygon( data=all_states, aes(x=X, y=Y, group = PID),colour="black", fill=NA, size=0.25 )+
   #scale_x_continuous(breaks = c(-120,-140))+
   #ggtitle("Daily Total Precip (inches) - PRISM")+
-  ggtitle("Average Seasonal (Jun-Jul-Aug-Sep) Total Precipitation (1981-2010)")+
+  ggtitle("Average Seasonal (Jun 15 - Sept 30th) Total Precipitation (1991-2020)")+
   labs(caption=paste0("Plot created: ",format(Sys.time(), "%Y-%m-%d"),
                       "\nThe University of Arizona\nhttps://cals.arizona.edu/climate/\nData Source: PRISM Climate Group"))+
   theme(plot.title=element_text(size=14, face = "bold"))
@@ -367,14 +387,14 @@ p<-p+geom_text(data = SWCities, aes(x = lon, y = lat, label = City),
                size = 5, col = "black", fontface = "bold", nudge_y = 0.1)
 
 # write out file
-png("/home/crimmins/RProjects/ClimPlot/monsoonClimo_maps/AZ_Monsoon_Seasonal_Precip_Climatology.png", width = 10, height = 10, units = "in", res = 300L)
+png("/home/crimmins/RProjects/ClimPlot/monsoonClimo_maps/AZ_Monsoon_Seasonal_Precip_Climatology_1991-2020.png", width = 10, height = 10, units = "in", res = 300L)
 #grid.newpage()
 print(p, newpage = FALSE)
 dev.off()
 
 # add logos
 # Call back the plot
-plot <- image_read("/home/crimmins/RProjects/ClimPlot/monsoonClimo_maps/AZ_Monsoon_Seasonal_Precip_Climatology.png")
+plot <- image_read("/home/crimmins/RProjects/ClimPlot/monsoonClimo_maps/AZ_Monsoon_Seasonal_Precip_Climatology_1991-2020.png")
 # And bring in a logo
 #logo_raw <- image_read("./logos/UA_CLIMAS_logos.png")
 logo_raw <- image_read("/home/crimmins/RProjects/ClimPlot/logos/UA_CSAP_CLIMAS_logos_horiz.png")
@@ -384,7 +404,7 @@ logo <- image_resize(logo_raw, geometry_size_percent(width=100,height = 100))
 #final_plot <- image_mosaic((c(plot, logo)))
 final_plot <- image_composite(plot, logo, offset = "+210+2780")
 # And overwrite the plot without a logo
-image_write(final_plot, "/home/crimmins/RProjects/ClimPlot/monsoonClimo_maps/AZ_Monsoon_Seasonal_Precip_Climatology.png")
+image_write(final_plot, "/home/crimmins/RProjects/ClimPlot/monsoonClimo_maps/AZ_Monsoon_Seasonal_Precip_Climatology_1991-2020.png")
 
 # monsoon season percent of annual total
 ANNppt<-stack("/home/crimmins/RProjects/ClimPlot/PRISM/ANNppt.grd")

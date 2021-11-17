@@ -10,6 +10,7 @@ library(reshape2)
 library(raster)
 library(rasterVis)
 library(PBSmapping)
+library(RColorBrewer)
 
 # Manually set universal date range
 #dateRangeStart="2018-06-15"

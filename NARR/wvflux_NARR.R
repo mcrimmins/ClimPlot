@@ -24,7 +24,7 @@ filesU <- list.files(pathWV,full.names = T, pattern="^wvuflx")
 filesV <- list.files(pathWV,full.names = T, pattern="^wvvflx")
 
 # get level list
-ncin <- nc_open(filesWV[1])
+ncin <- nc_open(filesU[1])
 print(ncin)
 #level <- ncvar_get(ncin, "level")
 
@@ -43,9 +43,10 @@ fluxV<-crop(fluxV,extent(e))
 # test plot
 library(rasterVis)
 library(grid)
-uv<-stack(fluxU[[225]]/100000,fluxV[[225]]/100000)
-vectorplot(uv, isField = 'dXY', narrows=500, region=TRUE,
-           key.arrow = list(label = 'kg/m*100000', size=10))+
+uv<-stack(fluxU[[225]],fluxV[[225]])
+at <- seq(250,800,50)
+vectorplot(uv/8640, isField = 'dXY', narrows=500, region=TRUE, at=at,
+           key.arrow = list(label = 'kg/m', size=10))+
   layer(sp.polygons(us))
 
 

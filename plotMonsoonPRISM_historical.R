@@ -28,8 +28,8 @@ library(rmdformats)
 
 
 # Loop through years
-yr1=1981
-yr2=2019
+yr1=2020
+yr2=2020
 
 for (yearDir in yr1:yr2)
 {
@@ -138,6 +138,7 @@ percRainDays<-(rainDays/length(allDates))*100
 
 # daily intensity index
 sdii<-totalPrecipAll/rainDays
+  sdii[is.infinite(sdii)] <- NA  
 
 # max 1-day precip
 maxRain <- calc(gridStack, fun=function(x){max(x, na.rm = TRUE)})
@@ -766,11 +767,11 @@ pal <- colorNumeric(c("yellow2", "green", "blue","red","orange"), c(0,75),
 crs(percRainDays) <- sp::CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
 
 leafMap<-leaflet() %>% addTiles() %>%
-  addRasterImage(percRainDays, colors = pal, opacity = 0.8, layerId = "% days") %>%
+  addRasterImage(percRainDays, colors = pal, opacity = 0.8, layerId = "perc_days") %>%
   addLegend(pal = pal, values = values(percRainDays),
             title=paste0("% Rain Days:<br> ",allDates[1]," to ",allDates[length(allDates)]))%>%
   addMouseCoordinates() %>%
-  addImageQuery(percRainDays, type="mousemove", layerId = "% days", digits = 0, prefix = "")
+  leafem::addImageQuery(percRainDays, type="mousemove", layerId = "perc_days", digits = 0, prefix = "")
 
 saveWidget(leafMap, file=paste0("/home/crimmins/RProjects/ClimPlot/monsoonMapshistorical/",yearDir,"/leafletMaps/SW_Monsoon_PercentDays.html"))
 # ----- end PERCENT AVG ----
@@ -841,11 +842,11 @@ pal <- colorNumeric(c("yellow", "blue", "red","orange"), c(0,1.5),
 crs(sdii) <- sp::CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
 
 leafMap<-leaflet() %>% addTiles() %>%
-  addRasterImage(sdii, colors = pal, opacity = 0.8, layerId = "in/day") %>%
+  addRasterImage(sdii, colors = pal, opacity = 0.8, layerId = "in per day") %>%
   addLegend(pal = pal, values = values(sdii),
             title=paste0("Intensity Index:<br> ",allDates[1]," to ",allDates[length(allDates)]))%>%
-  addMouseCoordinates() %>%
-  addImageQuery(sdii, type="mousemove", layerId = "in/day", digits = 2, prefix = "")
+  #addMouseCoordinates() %>%
+  addImageQuery(sdii, type="mousemove", layerId = "in per day", digits = 0, prefix = "")
 
 saveWidget(leafMap, file=paste0("/home/crimmins/RProjects/ClimPlot/monsoonMapshistorical/",yearDir,"/leafletMaps/SW_Monsoon_IntensityIndex.html"))
 # ----- end SDII ----

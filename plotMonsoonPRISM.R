@@ -39,9 +39,9 @@ library(rmdformats)
 #dateRangeEnd="2019-09-30"
 
 # auto date range...start with 6-15 and run on 6-17 to get two days of data, end on 10/1
- dateRangeStart="2020-06-15"
+ dateRangeStart="2021-06-15"
  dateRangeEnd=as.Date(format(as.POSIXct(Sys.Date()),usetz=TRUE, tz="Etc/GMT+7")) # date on local time zone
-  if(dateRangeEnd<"2020-06-16" | dateRangeEnd>="2020-10-01"){
+  if(dateRangeEnd<"2021-06-16" | dateRangeEnd>="2021-10-01"){
     stop()
   }
 
@@ -141,7 +141,7 @@ daysSince <-length(allDates)-(calc(gridStack, fun=function(x){max(which(x >= 0.0
 
 # percentile rank of precip
   # load allCumSum
-  allCumSum<-stack("/home/crimmins/RProjects/ClimPlot/AZNM_PRISM_Monsoon_cumPrecip_1981_2018.grd")
+  allCumSum<-stack("/home/crimmins/RProjects/ClimPlot/AZNM_PRISM_Monsoon_cumPrecip_1981_2020.grd")
   # get subsets for the current day
   doyCumSum<-subset(allCumSum, seq(i,nlayers(allCumSum)-(108-i),by=108))
   # add current year
@@ -828,11 +828,11 @@ pal <- colorNumeric(c("yellow", "blue", "red","orange"), c(0,1.5),
 crs(sdii) <- sp::CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
 
 leafMap<-leaflet() %>% addTiles() %>%
-  addRasterImage(sdii, colors = pal, opacity = 0.8, layerId = "in/day") %>%
+  addRasterImage(sdii, colors = pal, opacity = 0.8, layerId = "in per day") %>%
   addLegend(pal = pal, values = values(sdii),
             title=paste0("Intensity Index:<br> ",allDates[1]," to ",allDates[length(allDates)]))%>%
   addMouseCoordinates() %>%
-  addImageQuery(sdii, type="mousemove", layerId = "in/day", digits = 2, prefix = "")
+  addImageQuery(sdii, type="mousemove", layerId = "in per day", digits = 2, prefix = "")
 
 saveWidget(leafMap, file="/home/crimmins/RProjects/ClimPlot/monsoonMaps/leafletMaps/SW_Monsoon_IntensityIndex.html", selfcontained = FALSE)
 # ----- end SDII ----
@@ -1255,6 +1255,9 @@ render('/home/crimmins/RProjects/ClimPlot/createThumbsHTML.Rmd', output_file='da
   render('/home/crimmins/RProjects/ClimPlot/monsoonMaps/SWmonsoonTemplate.Rmd', output_file='swus_monsoon.html',
          output_dir='/home/crimmins/RProjects/ClimPlot/monsoonMaps', clean=TRUE)
 # ----  
+  
+  source('/home/crimmins/RProjects/ClimPlot/pushNotify_monsoonMaps.R')
+  
   
 # trying mapview
 #names(gridStack)<-allDates

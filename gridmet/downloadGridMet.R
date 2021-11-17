@@ -6,12 +6,12 @@ library(RCurl)
 #library(ncdf4)
 
 # pr, pet, rmax, rmin, sph, srad, th, tmmn, tmmx, vpd, vs
-#   
-filePrefix<-"vs_"
+#   erc, bi
+filePrefix<-"fm1000_"
 
 #Set years
 yr1<-1979
-yr2<-2019
+yr2<-2020
 # ---- download each year 
 for(i in yr1:yr2){
   URL <- paste0("https://www.northwestknowledge.net/metdata/data/",filePrefix,i,".nc")
@@ -21,4 +21,10 @@ for(i in yr1:yr2){
 }
   
   
+# check out netcdf files
+library(ncdf4)
+ncfname<-"/scratch/crimmins/gridmet/update_Aug2019/rmin_2020.nc"
+  ncin <- nc_open(ncfname)
+  print(ncin)
+
 

@@ -15,14 +15,14 @@ library(RCurl)
 
    
 # # # monolevel data   
-filePrefix<-"pres.sfc."
+filePrefix<-"acpcp."
 # #Set years
-yr1<-1979
-yr2<-2019
+yr1<-2020
+yr2<-2020
 # ---- download each year
 for(i in yr1:yr2){
   URL <- paste0("ftp://ftp.cdc.noaa.gov/Datasets/NARR/Dailies/monolevel/",filePrefix,i,".nc")
-  fileName<-  paste0("/scratch/crimmins/NARR/monolevel/sfcpres/",filePrefix,i,".nc")
+  fileName<-  paste0("/scratch/crimmins/NARR/monolevel/",filePrefix,i,".nc")
   download.file(URL, destfile = fileName)
   print(fileName)
 }
@@ -44,21 +44,21 @@ for(i in yr1:yr2){
 
 # # pressure level
 # # ftp://ftp.cdc.noaa.gov/Datasets/NARR/Dailies/pressure/hgt.197901.nc
-# 
-# months<-c("01","02","03","04","05","06","07","08","09","10","11","12")  
-# 
-# # monolevel data   
-# filePrefix<-"uwnd."
-# #Set years
-# yr1<-1979
-# yr2<-2019
-# # ---- download each year 
-# for(i in yr1:yr2){
-#  for(j in 1:12) {
-#     URL <- paste0("ftp://ftp.cdc.noaa.gov/Datasets/NARR/Dailies/pressure/",filePrefix,i,months[j],".nc")
-#     fileName<-  paste0("/scratch/crimmins/NARR/pressure/wind/",filePrefix,i,months[j],".nc")
-#     download.file(URL, destfile = fileName)
-#     print(fileName)
-#   }
-# }
+
+months<-c("01","02","03","04","05","06","07","08","09","10","11","12")
+
+# monolevel data
+filePrefix<-"hgt."
+#Set years
+yr1<-2020
+yr2<-2020
+# ---- download each year
+for(i in yr1:yr2){
+ for(j in 1:12) {
+    URL <- paste0("ftp://ftp.cdc.noaa.gov/Datasets/NARR/Dailies/pressure/",filePrefix,i,months[j],".nc")
+    fileName<-  paste0("/scratch/crimmins/NARR/pressure/",filePrefix,i,months[j],".nc")
+    download.file(URL, destfile = fileName)
+    print(fileName)
+  }
+}
 

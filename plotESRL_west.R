@@ -6,6 +6,7 @@ library(RCurl)
 library(ncdf4)
 library(rasterVis)
 library(grid)
+library(RColorBrewer)
 
 # map layers
 states <- getData('GADM', country='United States', level=1)

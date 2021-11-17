@@ -9,8 +9,8 @@ library(caTools)
 
 us <- getData("GADM", country="USA", level=1)
 # extract states (need to uppercase everything)
- state<-subset(us, NAME_1=="New Mexico")
-# state<-subset(us, NAME_1=="Arizona")
+# state<-subset(us, NAME_1=="New Mexico")
+ state<-subset(us, NAME_1=="Arizona")
 #state<-subset(us, NAME_1 %in% c("New Mexico","Arizona"))
 
 dailyGT0<-NULL
@@ -18,7 +18,7 @@ dailyGT0<-NULL
 # precip threshold
 thresh<-0.01
 
-for(year in 1981:2019){
+for(year in 1981:2020){
   currYear<-stack(paste0("/home/crimmins/RProjects/ClimPlot/monsoonDailyData/AZNM_PRISM_Monsoon_",year,"_dailyPrecip.grd"))
   # mask to AZ
   currYearClip <- mask(currYear, state)

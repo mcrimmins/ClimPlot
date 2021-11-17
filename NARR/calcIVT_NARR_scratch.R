@@ -74,14 +74,14 @@ e <- extent(-131, -85, 18, 49.5)
   level <- ncvar_get(ncin, "level")
 
 # get sfc pressure for day to use as mask
-  sfc.pres<-stack(filesPRES[28]) # 2009
-    subPres<-sfc.pres[[311]] # Aug 13th
+  sfc.pres<-stack(filesPRES[31]) # 2009
+    subPres<-sfc.pres[[225]] # Aug 13th
    
 # put levels in stack
  level<-level[which(level>=300)] #1000 to 500mb
 
 # out in loop  -- NOT EXTRACTING LEVELS IN SHUM 
- j=335 # Aug 2009
+ j=368 # Aug 2009
  shum<-stack()
  vwnd<-stack()
  uwnd<-stack()
@@ -113,7 +113,7 @@ e <- extent(-131, -85, 18, 49.5)
   shum<-crop(shum,e)
   
 # subset by day
-  i=7
+  i=13
   subIDX<-seq(i,(nlayers(uwnd)-(nlayers(uwnd)/length(level)))+i,by=(nlayers(uwnd)/length(level)))  
   #temp_uq<-uq[[subIDX]]
   #temp_vq<-vq[[subIDX]]
@@ -141,7 +141,7 @@ e <- extent(-131, -85, 18, 49.5)
     layer(sp.polygons(us))
 
 uv<-stack(uIntsfc,vIntsfc)
-  vectorplot(uv/10, isField = 'dXY')+
+  vectorplot(uv, isField = 'dXY')+
     layer(sp.polygons(us))+
     layer(sp.polygons(mx))
   
