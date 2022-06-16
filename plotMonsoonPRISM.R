@@ -39,9 +39,9 @@ library(rmdformats)
 #dateRangeEnd="2019-09-30"
 
 # auto date range...start with 6-15 and run on 6-17 to get two days of data, end on 10/1
- dateRangeStart="2021-06-15"
- dateRangeEnd=as.Date(format(as.POSIXct(Sys.Date()),usetz=TRUE, tz="Etc/GMT+7")) # date on local time zone
-  if(dateRangeEnd<"2021-06-16" | dateRangeEnd>="2021-10-01"){
+ dateRangeStart="2022-06-15"
+ dateRangeEnd=as.Date(format(as.POSIXct(Sys.time()),usetz=TRUE, tz="Etc/GMT+7")) # date on local time zone
+  if(dateRangeEnd<"2022-06-16" | dateRangeEnd>="2022-10-01"){
     stop()
   }
 
@@ -139,9 +139,9 @@ daysSince <-length(allDates)-(calc(gridStack, fun=function(x){max(which(x >= 0.0
   daysSince[daysSince < 0] <- NA
   daysSince[daysSince==Inf] <- NA
 
-# percentile rank of precip
+# percentile rank of precip from PRISMPrecipPerc.R
   # load allCumSum
-  allCumSum<-stack("/home/crimmins/RProjects/ClimPlot/AZNM_PRISM_Monsoon_cumPrecip_1981_2020.grd")
+  allCumSum<-stack("/home/crimmins/RProjects/ClimPlot/AZNM_PRISM_Monsoon_cumPrecip_1981_2021.grd")
   # get subsets for the current day
   doyCumSum<-subset(allCumSum, seq(i,nlayers(allCumSum)-(108-i),by=108))
   # add current year
@@ -475,7 +475,7 @@ p<-gplot(totalPrecipAll) + geom_tile(aes(fill = value)) +
   #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="darkgoldenrod", 
   #                     name="inches", limits=c(0,20),oob=squish)+
   
-  scale_fill_gradientn(colours = precipCols, na.value="darkgoldenrod", 
+  scale_fill_gradientn(colours = precipCols, na.value="burlywood4", 
                                           name="inches", limits=c(0,20),oob=squish, breaks=precBreaks, labels=precLabs, expand=NULL)+
   guides(fill= guide_colorbar(barheight=15,nbin = 500, raster = FALSE))+
   
@@ -552,7 +552,7 @@ p<-gplot(percPrecip) + geom_tile(aes(fill = value)) +
   #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="darkgoldenrod", 
   #                     name="inches", limits=c(0,20),oob=squish)+
   
-  scale_fill_gradientn(colours = precipCols, na.value="darkgoldenrod", 
+  scale_fill_gradientn(colours = precipCols, na.value="burlywood4", 
                        name="% of avg", limits=c(0,400),oob=squish, breaks=precBreaks, labels=precLabs, expand=NULL)+
   guides(fill= guide_colorbar(barheight=15,nbin = 500, raster = FALSE))+
   
@@ -627,7 +627,7 @@ p<-gplot(percRankPrecip) + geom_tile(aes(fill = value)) +
   #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="darkgoldenrod", 
   #                     name="inches", limits=c(0,20),oob=squish)+
   
-  scale_fill_gradientn(colours = precipCols, na.value="darkgoldenrod", 
+  scale_fill_gradientn(colours = precipCols, na.value="burlywood4", 
                        name="%tile", limits=c(0,100),oob=squish, breaks=precBreaks, labels=precLabs, expand=NULL)+
   guides(fill= guide_colorbar(barheight=15,nbin = 500, raster = FALSE))+
   
@@ -702,7 +702,7 @@ p<-gplot(percRainDays) + geom_tile(aes(fill = value)) +
   #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="darkgoldenrod", 
   #                     name="inches", limits=c(0,20),oob=squish)+
   
-  scale_fill_gradientn(colours = precipCols, na.value="darkgoldenrod", 
+  scale_fill_gradientn(colours = precipCols, na.value="burlywood4", 
                        name="%", limits=c(0,75),oob=squish, breaks=precBreaks, labels=precLabs, expand=NULL)+
   guides(fill= guide_colorbar(barheight=15,nbin = 500, raster = FALSE))+
   
@@ -774,10 +774,10 @@ precLabs[1]<-"0"
 #theme_set(theme_bw())
 p<-gplot(sdii) + geom_tile(aes(fill = value)) +
   #scale_fill_gradient2(low = 'white', high = 'blue') +
-  #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="darkgoldenrod", 
+  #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="burlywood4", 
   #                     name="inches", limits=c(0,20),oob=squish)+
   
-  scale_fill_gradientn(colours = precipCols, na.value="darkgoldenrod", 
+  scale_fill_gradientn(colours = precipCols, na.value="burlywood4", 
                        name="in/day", limits=c(0,1.5),oob=squish, breaks=precBreaks, labels=precLabs, expand=NULL)+
   guides(fill= guide_colorbar(barheight=15,nbin = 500, raster = FALSE))+
   
@@ -851,10 +851,10 @@ precLabs[1]<-"0.01"
 
 p<-gplot(maxRain) + geom_tile(aes(fill = value)) +
   #scale_fill_gradient2(low = 'white', high = 'blue') +
-  #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="darkgoldenrod", 
+  #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="burlywood4", 
   #                     name="inches", limits=c(0,20),oob=squish)+
   
-  scale_fill_gradientn(colours = precipCols, na.value="darkgoldenrod", 
+  scale_fill_gradientn(colours = precipCols, na.value="burlywood4", 
                        name="inches", limits=c(0,6),oob=squish, breaks=precBreaks, labels=precLabs, expand=NULL)+
   guides(fill= guide_colorbar(barheight=15,nbin = 500, raster = FALSE))+
   
@@ -929,10 +929,10 @@ precLabs[1]<-"0"
 
 p<-gplot(daysSince) + geom_tile(aes(fill = value)) +
   #scale_fill_gradient2(low = 'white', high = 'blue') +
-  #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="darkgoldenrod", 
+  #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="burlywood4", 
   #                     name="inches", limits=c(0,20),oob=squish)+
   
-  scale_fill_gradientn(colours = precipCols, na.value="tan4", 
+  scale_fill_gradientn(colours = precipCols, na.value="burlywood4", 
                        name="days", limits=c(0,30),oob=squish, breaks=precBreaks, labels=precLabs, expand=NULL)+
   guides(fill= guide_colorbar(barheight=15,nbin = 30, raster = FALSE))+
   
@@ -1033,10 +1033,10 @@ precLabs[1]<-"0.01"
 
 p<-gplot(gridStack[[max(nlayers(gridStack))]]) + geom_tile(aes(fill = value)) +
   #scale_fill_gradient2(low = 'white', high = 'blue') +
-  #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="darkgoldenrod", 
+  #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="burlywood4", 
   #                     name="inches", limits=c(0,20),oob=squish)+
   
-  scale_fill_gradientn(colours = precipCols, na.value="darkgoldenrod", 
+  scale_fill_gradientn(colours = precipCols, na.value="burlywood4", 
                        name="inches", limits=c(0,6),oob=squish, breaks=precBreaks, labels=precLabs, expand=NULL)+
   guides(fill= guide_colorbar(barheight=15,nbin = 500, raster = FALSE))+
   
@@ -1082,8 +1082,16 @@ final_plot <- image_composite(plot, logo, offset = "+510+2150")
 image_write(final_plot, "/home/crimmins/RProjects/ClimPlot/monsoonMaps/SW_Monsoon_LatestDay.png")
 
 # leaflet interactive
+
+#####
+# added error catch if day has no rain, all NA 6/16/2022
+tempVal<-values(gridStack[[max(nlayers(gridStack))]])
+if(sum(is.na(tempVal))==length(tempVal))
+  tempVal<-NULL
+#####
+
 pal <- colorNumeric(c("lightblue", "dodgerblue3", "palegreen","green4","salmon","orangered3",
-                      "lightgoldenrod1","orange2","plum2","purple"), values(gridStack[[max(nlayers(gridStack))]]),
+                      "lightgoldenrod1","orange2","plum2","purple"), NULL,
                     na.color = "transparent")
 crs(gridStack) <- sp::CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
 
@@ -1112,10 +1120,10 @@ precLabs[1]<-"0.01"
 names(gridStack)<-format(allDates, format="%b %d %Y")
 p<-gplot(gridStack) + geom_tile(aes(fill = value)) +
   #scale_fill_gradient2(low = 'white', high = 'blue') +
-  #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="darkgoldenrod", 
+  #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="burlywood4", 
   #                     name="inches", limits=c(0,20),oob=squish)+
   facet_wrap(~ variable) +
-  scale_fill_gradientn(colours = precipCols, na.value="darkgoldenrod", 
+  scale_fill_gradientn(colours = precipCols, na.value="burlywood4", 
                        name="inches", limits=c(0,6),oob=squish, breaks=precBreaks, labels=precLabs, expand=NULL)+
   guides(fill= guide_colorbar(barheight=15,nbin = 500, raster = FALSE))+
   
@@ -1182,10 +1190,10 @@ precLabs[1]<-"0.01"
 for(i in 1:length(allDates)){
     p<-gplot(gridStack[[i]]) + geom_tile(aes(fill = value)) +
       #scale_fill_gradient2(low = 'white', high = 'blue') +
-      #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="darkgoldenrod", 
+      #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="burlywood4", 
       #                     name="inches", limits=c(0,20),oob=squish)+
       
-      scale_fill_gradientn(colours = precipCols, na.value="darkgoldenrod", 
+      scale_fill_gradientn(colours = precipCols, na.value="burlywood4", 
                            name="inches", limits=c(0,6),oob=squish, breaks=precBreaks, labels=precLabs, expand=NULL)+
       guides(fill= guide_colorbar(barheight=15,nbin = 500, raster = FALSE))+
       
