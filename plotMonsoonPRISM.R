@@ -39,9 +39,9 @@ library(rmdformats)
 #dateRangeEnd="2019-09-30"
 
 # auto date range...start with 6-15 and run on 6-17 to get two days of data, end on 10/1
- dateRangeStart="2022-06-15"
- dateRangeEnd=as.Date(format(as.POSIXct(Sys.time()),usetz=TRUE, tz="Etc/GMT+7")) # date on local time zone
-  if(dateRangeEnd<"2022-06-16" | dateRangeEnd>="2022-10-01"){
+ dateRangeStart="2024-06-15"
+ dateRangeEnd=as.Date(format(as.POSIXct(Sys.time()),usetz=TRUE, tz="Etc/GMT+7"))-1 # date on local time zone
+  if(dateRangeEnd<"2024-06-16" | dateRangeEnd>="2024-10-01"){
     stop()
   }
 
@@ -141,7 +141,7 @@ daysSince <-length(allDates)-(calc(gridStack, fun=function(x){max(which(x >= 0.0
 
 # percentile rank of precip from PRISMPrecipPerc.R
   # load allCumSum
-  allCumSum<-stack("/home/crimmins/RProjects/ClimPlot/AZNM_PRISM_Monsoon_cumPrecip_1981_2021.grd")
+  allCumSum<-stack("/home/crimmins/RProjects/ClimPlot/AZNM_PRISM_Monsoon_cumPrecip_1981_2023.grd")
   # get subsets for the current day
   doyCumSum<-subset(allCumSum, seq(i,nlayers(allCumSum)-(108-i),by=108))
   # add current year
@@ -637,7 +637,7 @@ p<-gplot(percRankPrecip) + geom_tile(aes(fill = value)) +
 p<-p +  geom_polygon( data=all_states, aes(x=X, y=Y, group = PID),colour="black", fill=NA, size=0.25 )+
   #scale_x_continuous(breaks = c(-120,-140))+
   #ggtitle("Daily Total Precip (inches) - PRISM")+
-  ggtitle(paste0("Total Precipitation Percentile Rank (1981-2018 ranking period): ",allDates[1]," to ",allDates[length(allDates)]))+
+  ggtitle(paste0("Total Precipitation Percentile Rank (1981-2022 ranking period): ",allDates[1]," to ",allDates[length(allDates)]))+
   labs(caption=paste0("Plot created: ",format(Sys.time(), "%Y-%m-%d"),
                       "\nThe University of Arizona\nhttps://cals.arizona.edu/climate/\nData Source: PRISM Climate Group\nRCC-ACIS"))+
   theme(plot.title=element_text(size=14, face = "bold"))

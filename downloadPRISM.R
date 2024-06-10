@@ -7,15 +7,15 @@ library(RCurl)
 library(jsonlite)
 
 # get PRISM data
-options(prism.path = "/home/crimmins/RProjects/ClimPlot/PRISM")
-#get_prism_normals(type="ppt",resolution = "4km",mon = c(6,7,8,9), keepZip=FALSE)
-get_prism_normals(type="ppt",resolution = "4km",mon = c(1,2,3,4,5,10,11,12), keepZip=FALSE)
+options(prism.path = "/home/crimmins/RProjects/ClimPlot/PRISM/normals91_20")
+get_prism_normals(type="ppt",resolution = "4km",mon = c(6,7,8,9), keepZip=FALSE)
+#get_prism_normals(type="ppt",resolution = "4km",mon = c(1,2,3,4,5,10,11,12), keepZip=FALSE)
 
 files<-ls_prism_data(absPath=T)[,2]
-JJASppt<-stack(files)
+JJASppt<-stack(files[6:9])
 
-files<-ls_prism_data(absPath=T)[,2]
-ANNppt<-stack(files)
+#files<-ls_prism_data(absPath=T)[,2]
+#ANNppt<-stack(files)
 
 
 ## ---- download PRISM data ----
@@ -31,7 +31,7 @@ allDates<-seq(as.Date(dateRangeStart), as.Date(dateRangeEnd),1)
 # allDates<-seq(as.Date(dateRangeStart), as.Date(dateRangeEnd),1)
 
 # get shapefiles
-all_states <- map_data("state")
+#all_states <- map_data("state")
 
 # AZ/NM bbox -115.004883,31.184609,-102.524414,37.387617
 ACISbbox<-"-115,31,-102,38"

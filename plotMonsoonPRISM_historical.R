@@ -28,8 +28,8 @@ library(rmdformats)
 
 
 # Loop through years
-yr1=2021
-yr2=2021
+yr1=2023
+yr2=2023
 
 for (yearDir in yr1:yr2)
 {
@@ -152,7 +152,7 @@ daysSince <-length(allDates)-(calc(gridStack, fun=function(x){max(which(x > 0.05
 
   # percentile rank of precip
   # load allCumSum
-  allCumSum<-stack("/home/crimmins/RProjects/ClimPlot/AZNM_PRISM_Monsoon_cumPrecip_1981_2021.grd")
+  allCumSum<-stack("/home/crimmins/RProjects/ClimPlot/AZNM_PRISM_Monsoon_cumPrecip_1981_2022.grd")
   # get subsets for the current day
   doyCumSum<-subset(allCumSum, seq(i,nlayers(allCumSum)-(108-i),by=108))
   # add current year

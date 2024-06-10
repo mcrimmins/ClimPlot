@@ -1,6 +1,8 @@
 # calculate daily extent of precip 
 # MAC 08/27/19
 
+# run ./ClimPlot/downloadDailyPRISM_monsoon.R to update files
+
 library(raster)
 library(plyr)
 library(tidyr)
@@ -9,8 +11,8 @@ library(caTools)
 
 us <- getData("GADM", country="USA", level=1)
 # extract states (need to uppercase everything)
-# state<-subset(us, NAME_1=="New Mexico")
- state<-subset(us, NAME_1=="Arizona")
+state<-subset(us, NAME_1=="New Mexico")
+#state<-subset(us, NAME_1=="Arizona")
 #state<-subset(us, NAME_1 %in% c("New Mexico","Arizona"))
 
 dailyGT0<-NULL
@@ -18,12 +20,12 @@ dailyGT0<-NULL
 # precip threshold
 thresh<-0.01
 
-for(year in 1981:2020){
+for(year in 1981:2023){
   currYear<-stack(paste0("/home/crimmins/RProjects/ClimPlot/monsoonDailyData/AZNM_PRISM_Monsoon_",year,"_dailyPrecip.grd"))
   # mask to AZ
   currYearClip <- mask(currYear, state)
   # get counts
-  temp1<-as.data.frame(cellStats(currYearClip, function(i, ...) sum(i>thresh, na.rm = TRUE)))
+  temp1<-as.data.frame(cellStats(currYearClip, function(i, ...) sum(i>=thresh, na.rm = TRUE)))
   # build time series  
   dailyGT0 = rbind(dailyGT0, temp1)
 print(year) 
@@ -70,12 +72,27 @@ tempGT0$abvQ50<-ifelse(tempGT0$percExt>=tempGT0$q50smooth,1,0) # monsoon days
 library(dplyr)
 yearlyStats<-tempGT0 %>%
   group_by(year) %>%
-  summarise(totalMonsoonDays = sum(abvQ50))
+  summarise(totalMonsoonDays = sum(abvQ50),
+            avgExtent= mean(percExt),
+            medExtent=median(percExt))
+
+write.csv(yearlyStats, file = "AZ_Extent.csv")
 
 # plot monsoon days per year
+library(ggplot2)
 ggplot(yearlyStats, aes(year,totalMonsoonDays))+
   geom_bar(stat = "identity")+
-  ggtitle("Total days/season with abv median precip coverage (NM 81-19)")
+  ggtitle("Total Monsoon Days - New Mexico (June 15th-Sept 30th, 1981-2022)")+
+  ylab("days")+
+  theme_bw()
+
+ggplot(yearlyStats, aes(year,medExtent))+
+  geom_bar(stat = "identity")+
+  ggtitle("Median Daily Precipitation Coverage - New Mexico (June 15th-Sept 30th, 1981-2022)")+
+  ylab("% coverage")+
+  theme_bw()
+
+
 
 
 # plot of daily monsoon extent by year

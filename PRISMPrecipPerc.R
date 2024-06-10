@@ -8,7 +8,7 @@ library(raster)
 # loop through each and create growing stack of cumulative precip - does not work with webservice ----
 # write to file
 cumPrecipAll <- stack()
-for(year in 2018:2020){
+for(year in 2022:2023){
     # create current date
     dateRangeStart=paste0(year,"-06-15")
     dateRangeEnd= paste0(year,"-09-30")
@@ -61,12 +61,10 @@ print(year)
 }
 # ----
 
-
-
 # load years into stack and reorder into days
 setwd("~/RProjects/ClimPlot/monsoonPercs")
 allCumSum <- do.call(stack, lapply(list.files(path = "~/RProjects/ClimPlot/monsoonPercs", pattern = "*.grd"), stack))
-writeRaster(allCumSum,filename=paste0("/home/crimmins/RProjects/ClimPlot/AZNM_PRISM_Monsoon_cumPrecip_1981_2020.grd"), overwrite=TRUE)
+writeRaster(allCumSum,filename=paste0("/home/crimmins/RProjects/ClimPlot/AZNM_PRISM_Monsoon_cumPrecip_1981_2023.grd"), overwrite=TRUE)
 
 # load allCumSum
 allCumSum<-stack("/home/crimmins/RProjects/ClimPlot/AZNM_PRISM_Monsoon_cumPrecip_1981_2018.grd")
