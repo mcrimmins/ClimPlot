@@ -7,11 +7,12 @@ library(RCurl)
 
 # pr, pet, rmax, rmin, sph, srad, th, tmmn, tmmx, vpd, vs
 #   erc, bi
-filePrefix<-"fm1000_"
+# vars<-c("pr", "pet", "rmax", "rmin", "sph", "erc","bi","srad","tmmn", "tmmx", "vpd", "vs","th", "fm100","fm1000")
+filePrefix<-"fm100_"
 
 #Set years
-yr1<-1979
-yr2<-2020
+yr1<-2020
+yr2<-2022
 # ---- download each year 
 for(i in yr1:yr2){
   URL <- paste0("https://www.northwestknowledge.net/metdata/data/",filePrefix,i,".nc")
